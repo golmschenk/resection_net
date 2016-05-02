@@ -2,6 +2,7 @@
 Code for managing the resectioning data.
 """
 from math import pi, acos
+import numpy as np
 
 from go_data import GoData
 
@@ -15,6 +16,10 @@ class ResectionData(GoData):
         z = gravity_vector[2]
         pitch = -(pi/2 - acos(z))
         return pitch
+
+    @staticmethod
+    def normalize_vector(vector):
+        return vector / np.linalg.norm(vector)
 
 
 if __name__ == '__main__':
