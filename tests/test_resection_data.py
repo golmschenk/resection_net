@@ -42,3 +42,22 @@ class TestResectionData:
         assert np.allclose(normalized_vector0, [1.0, 0.0, 0.0], rtol=0.001)
         assert np.allclose(normalized_vector1, [0.707, 0.0, -0.707], rtol=0.001)
         assert np.allclose(normalized_vector2, [0.577, 0.577, 0.577], rtol=0.001)
+
+    def test_calculation_of_roll_from_gravity_vector(self):
+        gravity_vector0 = [0.0, -1.0, 0.0]
+        gravity_vector1 = [0.707, -0.707, 0.0]
+        gravity_vector2 = [-0.707, -0.707, 0.0]
+        gravity_vector3 = [1.0, 0.0, 0.0]
+        gravity_vector4 = [0.577, 0.577, 0.577]
+
+        roll0 = ResectionData().attain_roll_from_gravity_vector(gravity_vector0)
+        roll1 = ResectionData().attain_roll_from_gravity_vector(gravity_vector1)
+        roll2 = ResectionData().attain_roll_from_gravity_vector(gravity_vector2)
+        roll3 = ResectionData().attain_roll_from_gravity_vector(gravity_vector3)
+        roll4 = ResectionData().attain_roll_from_gravity_vector(gravity_vector4)
+
+        assert isclose(roll0, 0, rel_tol=0.001)
+        assert isclose(roll1, -pi / 4, rel_tol=0.001)
+        assert isclose(roll2, pi / 4, rel_tol=0.001)
+        assert isclose(roll3, -pi / 2, rel_tol=0.001)
+        assert isclose(roll4, -pi / 4, rel_tol=0.001)

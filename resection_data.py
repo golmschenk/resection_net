@@ -21,6 +21,15 @@ class ResectionData(GoData):
     def normalize_vector(vector):
         return vector / np.linalg.norm(vector)
 
+    def attain_roll_from_gravity_vector(self, gravity_vector):
+        xy_vector = gravity_vector
+        xy_vector[2] = 0
+        xy_vector = self.normalize_vector(xy_vector)
+
+        x = xy_vector[0]
+        roll = -(pi / 2 - acos(x))
+        return roll
+
 
 if __name__ == '__main__':
     data = ResectionData()
