@@ -122,13 +122,14 @@ class GoData:
         :rtype: np.ndarray
         """
         mat_variable = mat_data.get(variable_name_in_mat_data)
-        untransposed_array = np.array(mat_variable)
+        reversed_array = np.array(mat_variable)
+        array = reversed_array.transpose()
+        if variable_name_in_mat_data in ('images', 'depths'):
+            array = np.rollaxis(array, -1)
         if number_of_samples:
-            untransposed_array = untransposed_array[:number_of_samples]
-        if untransposed_array.ndim == 3:  # For depth images.
-            return untransposed_array.transpose((0, 2, 1))
-        else:  # For RGB images.
-            return untransposed_array.transpose((0, 3, 2, 1))
+            return array[:number_of_samples]
+        else:
+            return array
 
     @staticmethod
     def crop_data(array):
@@ -303,8 +304,18 @@ class GoData:
         :return: The images and the labels
         :rtype: (np.ndarray, np.ndarray)
         """
+        print('Augmenting with spatial jittering...')
         self.offset_augmentation(1)
+        print('Augmenting with gaussian noise...')
         self.gaussian_noise_augmentation(10, 4)
+
+    def shuffle(self):
+        """
+        Shuffles the images and labels together.
+        """
+        permuted_indexes = np.random.permutation(len(self.images))
+        self.images = self.images[permuted_indexes]
+        self.labels = self.labels[permuted_indexes]
 
 
 def _int64_feature(value):
@@ -319,4 +330,4 @@ if __name__ == '__main__':
     os.nice(10)
 
     data = GoData()
-    data.convert_mat_to_tfrecord('data/nyud_micro.mat')
+    data.convert_mat_to_tfrecord('data/nyu_depth_v2_labeled.mat')
