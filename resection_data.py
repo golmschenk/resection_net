@@ -13,6 +13,11 @@ class ResectionData(GoData):
     """
     A class for managing the resectioning data.
     """
+    def __init__(self):
+        super().__init__()
+
+        self.height = self.original_height
+        self.width = self.original_width
 
     def convert_mat_to_tfrecord(self, mat_file_path):
         """
@@ -27,7 +32,7 @@ class ResectionData(GoData):
         self.images = self.crop_data(uncropped_images)
         acceleration_vectors = self.convert_mat_data_to_numpy_array(mat_data, 'accelData')[:, :3]
         gravity_vectors = acceleration_vectors * -1  # The acceleration is in the up direction.
-        self.labels = np.zeros((self.images.shape[0], 2))
+        self.labels = np.zeros((self.images.shape[0], 2), dtype=np.float32)
         for index, gravity_vector in enumerate(gravity_vectors):
             normalized_gravity_vector = tuple(self.normalize_vector(gravity_vector))
             self.labels[index][0] = self.attain_pitch_from_gravity_vector(normalized_gravity_vector)
