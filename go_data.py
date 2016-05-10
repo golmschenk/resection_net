@@ -12,12 +12,9 @@ class GoData:
     A class for managing the TFRecord data.
     """
 
-    def __init__(self, data_directory='data', data_name='nyud', images_numpy_file_name='nyud_images',
-                 labels_numpy_file_name='nyud_labels'):
-        self.data_directory = data_directory
-        self.data_name = data_name
-        self.images_numpy_file_name = images_numpy_file_name
-        self.labels_numpy_file_name = labels_numpy_file_name
+    def __init__(self):
+        self.data_directory = 'data'
+        self.data_name = 'nyud_micro'
         self.height = 464 // 8
         self.width = 624 // 8
         self.channels = 3
@@ -25,6 +22,20 @@ class GoData:
         self.original_width = 624
         self.images = None
         self.labels = None
+
+        self.train_size = 'all'
+        self.validation_size = 0
+        self.test_size = 0
+
+    @property
+    def data_path(self):
+        """
+        Gives the path to the data file.
+
+        :return: The path to the data file.
+        :rtype: str
+        """
+        return os.path.join(self.data_directory, self.data_name)
 
     def read_and_decode(self, filename_queue):
         """
@@ -137,10 +148,7 @@ class GoData:
         array = reversed_array.transpose()
         if variable_name_in_mat_data in ('images', 'depths'):
             array = np.rollaxis(array, -1)
-        if number_of_samples:
-            return array[:number_of_samples]
-        else:
-            return array
+        return array[:number_of_samples]
 
     @staticmethod
     def crop_data(array):
@@ -154,21 +162,6 @@ class GoData:
         """
         return array[:, 8:-8, 8:-8]
 
-    def convert_mat_to_tfrecord(self, mat_file_path):
-        """
-        Converts the mat file data into a TFRecords file.
-
-        :param mat_file_path: The path to mat file to convert.
-        :type mat_file_path: str
-        """
-        mat_data = h5py.File(mat_file_path, 'r')
-        uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
-        self.images = self.crop_data(uncropped_images)
-        uncropped_labels = self.convert_mat_data_to_numpy_array(mat_data, 'depths')
-        self.labels = self.crop_data(uncropped_labels)
-        self.shrink()
-        self.convert_to_tfrecord()
-
     def numpy_files_to_tfrecords(self, augment=False):
         """
         Converts NumPy files to a TFRecords file.
@@ -177,35 +170,35 @@ class GoData:
         self.shrink()
         if augment:
             self.augment_data_set()
-        self.convert_to_tfrecord()
+        self.convert_to_tfrecords()
 
     def load_numpy_files(self):
         """
         Loads data from the numpy files into the object.
         """
-        images_numpy_file_path = os.path.join(self.data_directory, self.images_numpy_file_name)
-        labels_numpy_file_path = os.path.join(self.data_directory, self.labels_numpy_file_name)
+        images_numpy_file_path = os.path.join(self.data_path + '_images.npy')
+        labels_numpy_file_path = os.path.join(self.data_path + '_labels.npy')
         self.images = np.load(images_numpy_file_path)
         self.labels = np.load(labels_numpy_file_path)
 
-    def convert_to_tfrecord(self):
+    def convert_numpy_to_tfrecords(self, images, labels, data_set='train'):
         """
-        Converts the data to a TFRecord.
+        Converts numpy arrays to a TFRecords.
         """
-        number_of_examples = self.labels.shape[0]
-        if self.images.shape[0] != number_of_examples:
+        number_of_examples = labels.shape[0]
+        if images.shape[0] != number_of_examples:
             raise ValueError("Images count %d does not match label count %d." %
-                             (self.images.shape[0], number_of_examples))
-        rows = self.images.shape[1]
-        cols = self.images.shape[2]
-        depth = self.images.shape[3]
+                             (images.shape[0], number_of_examples))
+        rows = images.shape[1]
+        cols = images.shape[2]
+        depth = images.shape[3]
 
-        filename = os.path.join(self.data_directory, self.data_name + '.tfrecords')
+        filename = os.path.join(self.data_directory, self.data_name + '.' + data_set + '.tfrecords')
         print('Writing', filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for index in range(number_of_examples):
-            image_raw = self.images[index].tostring()
-            label_raw = self.labels[index].tostring()
+            image_raw = images[index].tostring()
+            label_raw = labels[index].tostring()
             example = tf.train.Example(features=tf.train.Features(feature={
                 'height': _int64_feature(rows),
                 'width': _int64_feature(cols),
@@ -307,13 +300,6 @@ class GoData:
     def augment_data_set(self):
         """
         Augments the data set with some basic approaches
-
-        :param images: The images array.
-        :type images: np.ndarray
-        :param labels: The labels array.
-        :type labels: np.ndarray
-        :return: The images and the labels
-        :rtype: (np.ndarray, np.ndarray)
         """
         print('Augmenting with spatial jittering...')
         self.offset_augmentation(1)
@@ -328,6 +314,56 @@ class GoData:
         self.images = self.images[permuted_indexes]
         self.labels = self.labels[permuted_indexes]
 
+    def import_data(self):
+        """
+        Import the data.
+        Should be overwritten by subclasses.
+        """
+        mat_data = h5py.File(self.data_path + '.mat', 'r')
+        uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
+        self.images = self.crop_data(uncropped_images)
+        uncropped_labels = self.convert_mat_data_to_numpy_array(mat_data, 'depths')
+        self.labels = self.crop_data(uncropped_labels)
+
+    def preprocess(self):
+        """
+        Preprocesses the data.
+        Should be overwritten by subclasses.
+        """
+        self.shrink()
+        self.augment_data_set()
+        self.shuffle()
+
+    def convert_to_tfrecords(self):
+        """
+        Converts the data to train, validation, and test TFRecords. If the size of any dataset is not specified, the
+        remaining data is placed into that dataset. For example, if there are 300 samples, and train_size is 200 with
+        neither of the other sizes yet, then the training dataset will contain 200 samples, the validation dataset
+        will contain 100 samples, and no test set will be created.
+        """
+        used = 0
+        for name, size in [('train', self.train_size), ('validation', self.validation_size), ('test', self.test_size)]:
+            if size in ('all', 'remaining', 'rest'):
+                self.convert_numpy_to_tfrecords(self.images[used:], self.labels[used:], data_set=name)
+                return
+            elif size:
+                self.convert_numpy_to_tfrecords(self.images[used:used+size], self.labels[used:used+size], data_set=name)
+                used += size
+                if used >= len(self.labels):
+                    return
+
+    def generate_tfrecords(self):
+        """
+        Creates the TFRecords for the data.
+        """
+        print('Importing the data...')
+        self.import_data()
+        print('Preprocessing the data...')
+        self.preprocess()
+        print('Generating the TF records...')
+        self.convert_to_tfrecords()
+        print('Done.')
+
 
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -341,4 +377,4 @@ if __name__ == '__main__':
     os.nice(10)
 
     data = GoData()
-    data.convert_mat_to_tfrecord('data/nyu_depth_v2_labeled.mat')
+    data.generate_tfrecords()
