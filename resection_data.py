@@ -18,6 +18,7 @@ class ResectionData(GoData):
 
         self.height = self.original_height
         self.width = self.original_width
+        self.label_shape = [2]
 
     def convert_mat_to_tfrecord(self, mat_file_path):
         """
