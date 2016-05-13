@@ -15,16 +15,19 @@ class GoData:
     def __init__(self):
         self.data_directory = 'data'
         self.data_name = 'nyud_micro'
+        self.import_directory = 'data/import'
         self.height = 464 // 8
         self.width = 624 // 8
         self.channels = 3
         self.original_height = 464
         self.original_width = 624
+        self.image_shape = [self.height, self.width, self.channels]
+        self.label_shape = [self.height, self.width, 1]
         self.images = None
         self.labels = None
 
-        self.train_size = 'all'
-        self.validation_size = 0
+        self.train_size = 9
+        self.validation_size = 1
         self.test_size = 0
 
     @property
@@ -39,9 +42,7 @@ class GoData:
 
     def read_and_decode(self, filename_queue):
         """
-        A definition of how TF should read the file record.
-        Slightly altered version from https://github.com/tensorflow/tensorflow/blob/r0.7/tensorflow/examples/how_tos/ \
-                                      reading_data/fully_connected_reader.py
+        A definition of how TF should read a single example proto from the file record.
 
         :param filename_queue: The file name queue to be read.
         :type filename_queue: tf.QueueBase
@@ -58,37 +59,24 @@ class GoData:
             })
 
         flat_image = tf.decode_raw(features['image_raw'], tf.uint8)
-        unnormalized_image = tf.reshape(flat_image, [self.height, self.width, self.channels])
+        unnormalized_image = tf.reshape(flat_image, self.image_shape)
         image = tf.cast(unnormalized_image, tf.float32) * (1. / 255) - 0.5
 
         flat_label = tf.decode_raw(features['label_raw'], tf.float32)
-        label = self.reshape_decoded_label(flat_label)
+        label = tf.reshape(flat_label, self.label_shape)
 
         return image, label
 
-    def reshape_decoded_label(self, flat_label):
-        """
-        Reshapes the label decoded from the TF record. Allows easy overriding by sub classes.
-
-        :param flat_label: The flat label from the decoded TF record.
-        :type flat_label: tf.Tensor
-        :return: The reshaped label.
-        :rtype: tf.Tensor
-        """
-        return tf.reshape(flat_label, [self.height, self.width, 1])
-
-    def inputs(self, data_type, batch_size, num_epochs=None):
+    def create_input_tensors_for_dataset(self, data_type, batch_size, num_epochs=None):
         """
         Prepares the data inputs.
-        Slightly altered version from https://github.com/tensorflow/tensorflow/blob/r0.7/tensorflow/examples/how_tos/ \
-                                      reading_data/fully_connected_reader.py
 
         :param data_type: The type of data file (usually train, validation, or test).
         :type data_type: str
         :param batch_size: The size of the batches
         :type batch_size: int
         :param num_epochs: Number of epochs to run for. Infinite if None.
-        :type num_epochs: int | None
+        :type num_epochs: int or None
         :return: The images and depths inputs.
         :rtype: (tf.Tensor, tf.Tensor)
         """
@@ -99,9 +87,9 @@ class GoData:
         file_path = os.path.join(self.data_directory, file_name)
 
         with tf.name_scope('Input'):
-            filename_queue = tf.train.string_input_producer([file_path], num_epochs=num_epochs)
+            file_name_queue = tf.train.string_input_producer([file_path], num_epochs=num_epochs)
 
-            image, label = self.read_and_decode(filename_queue)
+            image, label = self.read_and_decode(file_name_queue)
 
             images, labels = tf.train.shuffle_batch(
                 [image, label], batch_size=batch_size, num_threads=2,
@@ -314,16 +302,40 @@ class GoData:
         self.images = self.images[permuted_indexes]
         self.labels = self.labels[permuted_indexes]
 
+    def import_recursive_mat_directory(self):
+        """
+        Imports the import directory of Matlab mat files recursively into the data images and labels.
+        """
+        for file_directory, _, file_names in os.walk(self.import_directory):
+            mat_names = [file_name for file_name in file_names if file_name.endswith('.mat')]
+            for mat_name in mat_names:
+                self.import_mat_file(os.path.join(file_directory, mat_name))
+
+    def import_mat_file(self, mat_path):
+        """
+        Imports a Matlab mat file into the data images and labels (concatenating the arrays if they already exists).
+
+        :param mat_path: The path to the mat file to import.
+        :type mat_path: str
+        """
+        with h5py.File(mat_path, 'r') as mat_data:
+            uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
+            images = self.crop_data(uncropped_images)
+            uncropped_labels = self.convert_mat_data_to_numpy_array(mat_data, 'depths')
+            labels = self.crop_data(uncropped_labels)
+            if self.images is None:
+                self.images = images
+                self.labels = labels
+            else:
+                self.images = np.concatenate((self.images, images))
+                self.labels = np.concatenate((self.labels, labels))
+
     def import_data(self):
         """
         Import the data.
         Should be overwritten by subclasses.
         """
-        mat_data = h5py.File(self.data_path + '.mat', 'r')
-        uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
-        self.images = self.crop_data(uncropped_images)
-        uncropped_labels = self.convert_mat_data_to_numpy_array(mat_data, 'depths')
-        self.labels = self.crop_data(uncropped_labels)
+        self.import_recursive_mat_directory()
 
     def preprocess(self):
         """
