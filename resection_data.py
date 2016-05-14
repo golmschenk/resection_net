@@ -4,7 +4,6 @@ Code for managing the resectioning data.
 from math import pi, acos
 import h5py
 import numpy as np
-import tensorflow as tf
 
 from go_data import GoData
 
@@ -20,26 +19,43 @@ class ResectionData(GoData):
         self.width = self.original_width
         self.label_shape = [2]
 
-    def convert_mat_to_tfrecord(self, mat_file_path):
-        """
-        Converts the mat file data into a TFRecords file.
-        Overrides the GoData method, because only images should be cropped.
+        self.train_size = 'all'
+        self.validation_size = 0
 
-        :param mat_file_path: The path to mat file to convert.
-        :type mat_file_path: str
+    def import_mat_file(self, mat_path):
         """
-        mat_data = h5py.File(mat_file_path, 'r')
-        uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
-        self.images = self.crop_data(uncropped_images)
-        acceleration_vectors = self.convert_mat_data_to_numpy_array(mat_data, 'accelData')[:, :3]
-        gravity_vectors = acceleration_vectors * -1  # The acceleration is in the up direction.
-        self.labels = np.zeros((self.images.shape[0], 2), dtype=np.float32)
-        for index, gravity_vector in enumerate(gravity_vectors):
-            normalized_gravity_vector = tuple(self.normalize_vector(gravity_vector))
-            self.labels[index][0] = self.attain_pitch_from_gravity_vector(normalized_gravity_vector)
-            self.labels[index][1] = self.attain_roll_from_gravity_vector(normalized_gravity_vector)
+        Imports a Matlab mat file into the data images and labels (concatenating the arrays if they already exists).
+        Overrides the GoData method, because only images should be cropped and processing must be done for the labels.
+
+        :param mat_path: The path to the mat file to import.
+        :type mat_path: str
+        """
+        with h5py.File(mat_path, 'r') as mat_data:
+            uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
+            images = self.crop_data(uncropped_images)
+            acceleration_vectors = self.convert_mat_data_to_numpy_array(mat_data, 'accelData')[:, :3]
+            gravity_vectors = np.multiply(acceleration_vectors, -1)  # The acceleration is in the up direction.
+            labels = np.zeros((len(gravity_vectors), 2), dtype=np.float32)
+            for index, gravity_vector in enumerate(gravity_vectors):
+                normalized_gravity_vector = tuple(self.normalize_vector(gravity_vector))
+                labels[index][0] = self.attain_pitch_from_gravity_vector(normalized_gravity_vector)
+                labels[index][1] = self.attain_roll_from_gravity_vector(normalized_gravity_vector)
+            if self.images is None:
+                self.images = images
+                self.labels = labels
+            else:
+                self.images = np.concatenate((self.images, images))
+                self.labels = np.concatenate((self.labels, labels))
+
+    def preprocess(self):
+        """
+        Preprocesses the data.
+        Should be overwritten by subclasses.
+        """
+        print('Shrinking the data...')
         self.shrink()
-        self.convert_to_tfrecord()
+        print('Shuffling the data...')
+        self.shuffle()
 
     def shrink(self):
         """
@@ -47,18 +63,6 @@ class ResectionData(GoData):
         Overrides the GoData method, because only images should be resized.
         """
         self.images = self.shrink_array_with_rebinning(self.images)
-
-    def reshape_decoded_label(self, flat_label):
-        """
-        Reshapes the label decoded from the TF record.
-        Overrides the GoData method, because the labels are of a different shape than the default.
-
-        :param flat_label: The flat label from the decoded TF record.
-        :type flat_label: tf.Tensor
-        :return: The reshaped label.
-        :rtype: tf.Tensor
-        """
-        return tf.reshape(flat_label, [2])
 
     @staticmethod
     def attain_pitch_from_gravity_vector(gravity_vector):
@@ -106,4 +110,4 @@ class ResectionData(GoData):
 
 if __name__ == '__main__':
     data = ResectionData()
-    data.convert_mat_to_tfrecord('data/nyu_depth_v2_labeled.mat')
+    data.generate_tfrecords()
