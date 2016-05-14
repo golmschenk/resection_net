@@ -19,6 +19,10 @@ class ResectionData(GoData):
         self.width = self.original_width
         self.label_shape = [2]
 
+        self.import_directory = '/Volumes/Silver/Research/NYU Depth V2 Mat'
+        self.data_directory = '/Volumes/Silver/Research'
+        self.data_name = 'nyu_studies_bedrooms1'
+
         self.train_size = 'all'
         self.validation_size = 0
 
@@ -33,7 +37,10 @@ class ResectionData(GoData):
         with h5py.File(mat_path, 'r') as mat_data:
             uncropped_images = self.convert_mat_data_to_numpy_array(mat_data, 'images')
             images = self.crop_data(uncropped_images)
-            acceleration_vectors = self.convert_mat_data_to_numpy_array(mat_data, 'accelData')[:, :3]
+            acceleration_data = self.convert_mat_data_to_numpy_array(mat_data, 'accelData')
+            if acceleration_data.shape[0] == 4:
+                acceleration_data = acceleration_data.transpose()
+            acceleration_vectors = acceleration_data[:, :3]
             gravity_vectors = np.multiply(acceleration_vectors, -1)  # The acceleration is in the up direction.
             labels = np.zeros((len(gravity_vectors), 2), dtype=np.float32)
             for index, gravity_vector in enumerate(gravity_vectors):
