@@ -13,12 +13,14 @@ class ResectionNet(GoNet):
     """
     A neural network class to estimate camera parameters from 2D images.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.data = ResectionData()
         self.epoch_limit = None
-        self.batch_size = 20
+        self.batch_size = 100
+        self.initial_learning_rate = 0.00001
         self.step_summary_name = "Loss"
         self.image_summary_on = False
 
@@ -31,7 +33,7 @@ class ResectionNet(GoNet):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        return self.create_linear_classifier_inference_op(images)
+        return self.create_deep_inference_op(images)
 
     def create_linear_classifier_inference_op(self, images):
         """
@@ -113,8 +115,15 @@ class ResectionNet(GoNet):
 
             h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
 
+        with tf.name_scope('conv6'):
+            w_conv = weight_variable([10, 10, 256, 256])
+            b_conv = bias_variable([256])
+
+            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
+
         with tf.name_scope('fc1'):
-            fc0_size = size_from_stride_two(self.data.height * self.data.width * 256, iterations=5)
+            fc0_size = size_from_stride_two(self.data.height, iterations=6) * size_from_stride_two(self.data.width,
+                                                                                                   iterations=6) * 256
             fc1_size = 2
             h_fc = tf.reshape(h_conv, [-1, fc0_size])
             w_fc = weight_variable([fc0_size, fc1_size])
@@ -170,11 +179,12 @@ class ResectionNet(GoNet):
             w_conv = weight_variable([10, 10, 256, 256])
             b_conv = bias_variable([256])
 
-            h_conv = leaky_relu(conv2d(h_conv_drop, w_conv, strides=[1, 1, 1, 1]) + b_conv)
+            h_conv = leaky_relu(conv2d(h_conv_drop, w_conv, strides=[1, 2, 2, 1]) + b_conv)
             h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
 
         with tf.name_scope('fc1'):
-            fc0_size = size_from_stride_two(self.data.height * self.data.width * 256, iterations=5)
+            fc0_size = size_from_stride_two(self.data.height, iterations=6) * size_from_stride_two(self.data.width,
+                                                                                                   iterations=6) * 256
             fc1_size = 2
             h_fc = tf.reshape(h_conv_drop, [-1, fc0_size])
             w_fc = weight_variable([fc0_size, fc1_size])
