@@ -17,14 +17,15 @@ class ResectionData(GoData):
 
         self.height = self.original_height
         self.width = self.original_width
+        self.image_shape = [self.height, self.width, self.channels]
         self.label_shape = [2]
 
-        self.import_directory = '/Volumes/Silver/Research/NYU Depth V2 Mat'
+        self.import_directory = '/Volumes/Silver/Research'
         self.data_directory = '/Volumes/Silver/Research'
         self.data_name = 'nyu_studies_bedrooms1'
 
         self.train_size = 'all'
-        self.validation_size = 0
+        self.validation_size = 1000
 
     def import_mat_file(self, mat_path):
         """
