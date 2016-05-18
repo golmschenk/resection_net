@@ -1,5 +1,5 @@
 """
-Code related to the DepthNet.
+Code related to the GoNet.
 """
 import datetime
 import multiprocessing
@@ -206,7 +206,8 @@ class GoNet(multiprocessing.Process):
         """
         print('Preparing data...')
         # Setup the inputs.
-        images_tensor, labels_tensor = self.create_input_tensors()
+        with tf.name_scope('Input'):
+            images_tensor, labels_tensor = self.create_input_tensors()
 
         print('Building graph...')
         # Add the forward pass operations to the graph.
@@ -285,7 +286,7 @@ class GoNet(multiprocessing.Process):
                 self.interface_handler()
         except tf.errors.OutOfRangeError:
             if self.step == 0:
-                print('Training data not found.')
+                print('Data not found.')
             else:
                 print('Done training for %d epochs, %d steps.' % (self.epoch_limit, self.step))
         finally:
