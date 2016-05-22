@@ -19,10 +19,28 @@ class ResectionNet(GoNet):
 
         self.data = ResectionData()
         self.epoch_limit = None
-        self.batch_size = 100
-        self.initial_learning_rate = 0.00001
         self.step_summary_name = "Loss"
         self.image_summary_on = False
+
+        self.batch_size = 50
+        self.initial_learning_rate = 0.0001
+        self.summary_step_period = 1
+        self.validation_step_period = 1
+
+    def create_loss_tensor(self, predicted_labels, labels):
+        """
+        Create the loss op and add it to the graph.
+
+        :param predicted_labels: The labels predicted by the graph.
+        :type predicted_labels: tf.Tensor
+        :param labels: The ground truth labels.
+        :type labels: tf.Tensor
+        :return: The loss tensor.
+        :rtype: tf.Tensor
+        """
+        squared_difference = tf.square(predicted_labels - labels)
+        tf.scalar_summary("Worst squared difference", tf.reduce_max(squared_difference))
+        return squared_difference
 
     def create_inference_op(self, images):
         """
@@ -193,19 +211,6 @@ class ResectionNet(GoNet):
             predicted_labels = leaky_relu(tf.matmul(h_fc, w_fc) + b_fc)
 
         return predicted_labels
-
-    def create_loss_tensor(self, predicted_labels, labels):
-        """
-        Create the loss op and add it to the graph.
-
-        :param predicted_labels: The labels predicted by the graph.
-        :type predicted_labels: tf.Tensor
-        :param labels: The ground truth labels.
-        :type labels: tf.Tensor
-        :return: The loss tensor.
-        :rtype: tf.Tensor
-        """
-        return self.create_absolute_differences_tensor(predicted_labels, labels)
 
 
 if __name__ == '__main__':

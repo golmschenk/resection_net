@@ -25,7 +25,7 @@ class ResectionData(GoData):
         self.data_name = 'nyu_studies_bedrooms1'
 
         self.train_size = 'all'
-        self.validation_size = 1000
+        self.validation_size = 50
 
     def import_mat_file(self, mat_path):
         """
