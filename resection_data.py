@@ -20,9 +20,9 @@ class ResectionData(GoData):
         self.image_shape = [self.height, self.width, self.channels]
         self.label_shape = [2]
 
-        self.import_directory = '/Volumes/Silver/Research'
-        self.data_directory = '/Volumes/Silver/Research'
-        self.data_name = 'nyu_studies_bedrooms1'
+        self.import_directory = '/Gold/nyu_depth_v2_mat'
+        self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
+        self.data_name = None
 
         self.train_size = 'all'
         self.validation_size = 50
@@ -48,29 +48,8 @@ class ResectionData(GoData):
                 normalized_gravity_vector = tuple(self.normalize_vector(gravity_vector))
                 labels[index][0] = self.attain_pitch_from_gravity_vector(normalized_gravity_vector)
                 labels[index][1] = self.attain_roll_from_gravity_vector(normalized_gravity_vector)
-            if self.images is None:
-                self.images = images
-                self.labels = labels
-            else:
-                self.images = np.concatenate((self.images, images))
-                self.labels = np.concatenate((self.labels, labels))
-
-    def preprocess(self):
-        """
-        Preprocesses the data.
-        Should be overwritten by subclasses.
-        """
-        print('Shrinking the data...')
-        self.shrink()
-        print('Shuffling the data...')
-        self.shuffle()
-
-    def shrink(self):
-        """
-        Rebins the data arrays into the specified data size.
-        Overrides the GoData method, because only images should be resized.
-        """
-        self.images = self.shrink_array_with_rebinning(self.images)
+            self.images = images
+            self.labels = labels
 
     @staticmethod
     def attain_pitch_from_gravity_vector(gravity_vector):
@@ -118,4 +97,4 @@ class ResectionData(GoData):
 
 if __name__ == '__main__':
     data = ResectionData()
-    data.generate_tfrecords()
+    data.generate_all_tfrecords()
