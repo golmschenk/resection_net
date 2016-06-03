@@ -1,10 +1,13 @@
 """
 Code for managing the TFRecord data.
 """
+import glob
 import os
 import h5py
 import numpy as np
 import tensorflow as tf
+
+from convenience import random_boolean_tensor
 
 
 class GoData:
@@ -16,6 +19,7 @@ class GoData:
         self.data_directory = 'data'
         self.data_name = 'nyud_micro'
         self.import_directory = 'data/import'
+        self.dataset_container = 'directory'
         self.height = 464 // 8
         self.width = 624 // 8
         self.channels = 3
@@ -42,7 +46,7 @@ class GoData:
         """
         return os.path.join(self.data_directory, self.data_name)
 
-    def read_and_decode(self, filename_queue):
+    def read_and_decode_single_example_from_tfrecords(self, filename_queue):
         """
         A definition of how TF should read a single example proto from the file record.
 
@@ -62,10 +66,81 @@ class GoData:
 
         flat_image = tf.decode_raw(features['image_raw'], tf.uint8)
         unnormalized_image = tf.reshape(flat_image, self.image_shape)
-        image = tf.cast(unnormalized_image, tf.float32) * (1. / 255) - 0.5
+        image = tf.cast(unnormalized_image, tf.float32)
 
         flat_label = tf.decode_raw(features['label_raw'], tf.float32)
         label = tf.reshape(flat_label, self.label_shape)
+
+        return image, label
+
+    @staticmethod
+    def preprocess(image, label):
+        """
+        Preprocesses the image and label to be in the correct format for training.
+
+        :param image: The image to be processed.
+        :type image: tf.Tensor
+        :param label: The label to be processed.
+        :type label: tf.Tensor
+        :return: The processed image and label.
+        :rtype: (tf.Tensor, tf.Tensor)
+        """
+        image = tf.image.per_image_whitening(image)
+        return image, label
+
+    @staticmethod
+    def horizontally_flip_label(label):
+        """
+        Changes the label in such a way that it matches its corresponding image if it's been horizontally flipped.
+        Should be overridden depending on the type of label data.
+
+        :param label: The label to be "flipped".
+        :type label: tf.Tensor
+        :return: The "flipped" label.
+        :rtype: tf.Tensor
+        """
+        return tf.image.flip_left_right(label)
+
+    def randomly_flip_horizontally(self, image, label):
+        """
+        Simultaneously and randomly flips the image and label horizontally, such that they still match after flipping.
+
+        :param image: The image to be flipped (maybe).
+        :type image: tf.Tensor
+        :param label: The label to be flipped (maybe).
+        :type label: tf.Tensor
+        :return: The image and label which may be flipped.
+        :rtype: (tf.Tensor, tf.Tensor)
+        """
+        should_flip = random_boolean_tensor()
+        image = tf.cond(
+            should_flip,
+            lambda: tf.image.flip_left_right(image),
+            lambda: image
+        )
+        label = tf.cond(
+            should_flip,
+            lambda: self.horizontally_flip_label(label),
+            lambda: label
+        )
+        return image, label
+
+    def augment(self, image, label):
+        """
+        Augments the data in various ways.
+
+        :param image: The image to be augmented.
+        :type image: tf.Tensor
+        :param label: The label to be augmented
+        :type label: tf.Tensor
+        :return: The augmented image and label
+        :rtype: (tf.Tensor, tf.Tensor)
+        """
+        image = image + tf.random_normal(self.image_shape, mean=0, stddev=8)
+        image = tf.image.random_brightness(image, max_delta=64)
+        image = tf.image.random_contrast(image, lower=0.2, upper=1.8)
+
+        image, label = self.randomly_flip_horizontally(image, label)
 
         return image, label
 
@@ -82,15 +157,14 @@ class GoData:
         :return: The images and depths inputs.
         :rtype: (tf.Tensor, tf.Tensor)
         """
-        if data_type:
-            file_name = self.data_name + '.' + data_type + '.tfrecords'
+        if self.dataset_container == 'file':
+            file_name_queue = self.file_name_queue_for_dataset_file(data_type, num_epochs)
         else:
-            file_name = self.data_name + '.tfrecords'
-        file_path = os.path.join(self.data_directory, file_name)
+            file_name_queue = self.file_name_queue_for_dataset_directory(data_type, num_epochs)
 
-        file_name_queue = tf.train.string_input_producer([file_path], num_epochs=num_epochs)
-
-        image, label = self.read_and_decode(file_name_queue)
+        image, label = self.read_and_decode_single_example_from_tfrecords(file_name_queue)
+        image, label = self.augment(image, label)
+        image, label = self.preprocess(image, label)
 
         images, labels = tf.train.shuffle_batch(
             [image, label], batch_size=batch_size, num_threads=2,
@@ -98,6 +172,42 @@ class GoData:
         )
 
         return images, labels
+
+    def file_name_queue_for_dataset_file(self, data_type=None, num_epochs=None):
+        """
+        Creates the files name queue for a single TFRecords file.
+
+        :param data_type: The type of dataset being created.
+        :type data_type: str
+        :param num_epochs: Number of epochs to run for. Infinite if None.
+        :type num_epochs: int or None
+        :return: The file name queue.
+        :rtype: tf.QueueBase
+        """
+        if data_type:
+            file_name = self.data_name + '.' + data_type + '.tfrecords'
+        else:
+            file_name = self.data_name + '.tfrecords'
+        file_path = os.path.join(self.data_directory, file_name)
+        file_name_queue = tf.train.string_input_producer([file_path], num_epochs=num_epochs)
+        return file_name_queue
+
+    def file_name_queue_for_dataset_directory(self, data_type, num_epochs=None):
+        """
+        Creates the files name queue for a single TFRecords file.
+
+        :param data_type: The type of dataset being created.
+        :type data_type: str
+        :param num_epochs: Number of epochs to run for. Infinite if None.
+        :type num_epochs: int or None
+        :return: The file name queue.
+        :rtype: tf.QueueBase
+        """
+        file_paths = []
+        for file_path in glob.glob(os.path.join(self.data_directory, data_type, '*.tfrecords')):
+            file_paths.append(file_path)
+        file_name_queue = tf.train.string_input_producer(file_paths, num_epochs=num_epochs)
+        return file_name_queue
 
     def convert_mat_file_to_numpy_file(self, mat_file_path, number_of_samples=None):
         """
@@ -169,8 +279,10 @@ class GoData:
         labels_numpy_file_path = os.path.join(self.data_path + '_labels.npy')
         self.images = np.load(images_numpy_file_path)
         self.labels = np.load(labels_numpy_file_path)
+        if self.labels.dtype == np.float64:
+            self.labels = self.labels.astype(np.float32)
 
-    def convert_numpy_to_tfrecords(self, images, labels, data_set='train'):
+    def convert_numpy_to_tfrecords(self, images, labels):
         """
         Converts numpy arrays to a TFRecords.
         """
@@ -182,7 +294,7 @@ class GoData:
         cols = images.shape[2]
         depth = images.shape[3]
 
-        filename = os.path.join(self.data_directory, self.data_name + '.' + data_set + '.tfrecords')
+        filename = os.path.join(self.data_directory, self.data_name + '.tfrecords')
         print('Writing', filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for index in range(number_of_examples):
@@ -305,17 +417,6 @@ class GoData:
         self.images = self.images[permuted_indexes]
         self.labels = self.labels[permuted_indexes]
 
-    def import_recursive_mat_directory(self):
-        """
-        Imports the import directory of Matlab mat files recursively into the data images and labels.
-        """
-        for file_directory, _, file_names in os.walk(self.import_directory):
-            mat_names = [file_name for file_name in file_names if file_name.endswith('.mat')]
-            for mat_name in mat_names:
-                print('Importing %s...' % mat_name)
-                self.import_mat_file(os.path.join(file_directory, mat_name))
-                assert self.images.shape[0] == self.labels.shape[0]
-
     def import_mat_file(self, mat_path):
         """
         Imports a Matlab mat file into the data images and labels (concatenating the arrays if they already exists).
@@ -328,21 +429,20 @@ class GoData:
             images = self.crop_data(uncropped_images)
             uncropped_labels = self.convert_mat_data_to_numpy_array(mat_data, 'depths')
             labels = self.crop_data(uncropped_labels)
-            if self.images is None:
-                self.images = images
-                self.labels = labels
-            else:
-                self.images = np.concatenate((self.images, images))
-                self.labels = np.concatenate((self.labels, labels))
+            self.images = images
+            self.labels = labels
 
-    def import_data(self):
+    def import_file(self, file_path):
         """
         Import the data.
         Should be overwritten by subclasses.
-        """
-        self.import_recursive_mat_directory()
 
-    def preprocess(self):
+        :param file_path: The file path of the file to be imported.
+        :type file_path: str
+        """
+        self.import_mat_file(file_path)
+
+    def pretfrecords_preprocess(self):
         """
         Preprocesses the data.
         Should be overwritten by subclasses.
@@ -356,33 +456,35 @@ class GoData:
 
     def convert_to_tfrecords(self):
         """
-        Converts the data to train, validation, and test TFRecords. If the size of any dataset is not specified, the
-        remaining data is placed into that dataset. For example, if there are 300 samples, and train_size is 200 with
-        neither of the other sizes yet, then the training dataset will contain 200 samples, the validation dataset
-        will contain 100 samples, and no test set will be created.
+        Converts the data to a TFRecords file.
         """
-        used = 0
-        for name, size in [('train', self.train_size), ('validation', self.validation_size), ('test', self.test_size)]:
-            if size in ('all', 'remaining', 'rest'):
-                self.convert_numpy_to_tfrecords(self.images[used:], self.labels[used:], data_set=name)
-                return
-            elif size:
-                self.convert_numpy_to_tfrecords(self.images[used:used+size], self.labels[used:used+size], data_set=name)
-                used += size
-                if used >= len(self.labels):
-                    return
+        self.convert_numpy_to_tfrecords(self.images, self.labels)
 
-    def generate_tfrecords(self):
+    def generate_all_tfrecords(self):
         """
         Creates the TFRecords for the data.
         """
-        print('Importing the data...')
-        self.import_data()
-        print('Preprocessing the data...')
-        self.preprocess()
-        print('Generating the TF records...')
-        self.convert_to_tfrecords()
-        print('Done.')
+        import_file_paths = self.attain_import_file_paths()
+        for import_file_path in import_file_paths:
+            print('Converting %s...' % import_file_path)
+            self.import_file(import_file_path)
+            self.data_name = os.path.splitext(os.path.basename(import_file_path))[0]
+            self.convert_to_tfrecords()
+
+    def attain_import_file_paths(self):
+        """
+        Gets a list of all the file paths for files to be imported.
+
+        :return: The list of the file paths to be imported.
+        :rtype: list[str]
+        """
+        import_file_paths = []
+        for file_directory, _, file_names in os.walk(self.import_directory):
+            mat_names = [file_name for file_name in file_names if file_name.endswith('.mat')]
+            for mat_name in mat_names:
+                mat_path = os.path.abspath(os.path.join(file_directory, mat_name))
+                import_file_paths.append(mat_path)
+        return import_file_paths
 
 
 def _int64_feature(value):
@@ -395,4 +497,4 @@ def _bytes_feature(value):
 
 if __name__ == '__main__':
     data = GoData()
-    data.generate_tfrecords()
+    data.generate_all_tfrecords()
