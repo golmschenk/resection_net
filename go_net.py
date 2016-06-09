@@ -22,7 +22,7 @@ class GoNet(multiprocessing.Process):
         super().__init__()
 
         # Common variables.
-        self.batch_size = 8
+        self.batch_size = 3
         self.initial_learning_rate = 0.00001
         self.data = GoData()
         self.dropout_keep_probability = 0.5
@@ -69,13 +69,13 @@ class GoNet(multiprocessing.Process):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.data.height * self.data.width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.data.channels])
-        weights = weight_variable([pixel_count * self.data.channels, pixel_count], stddev=0.001)
+        pixel_count = self.data.image_height * self.data.image_width
+        flat_images = tf.reshape(images, [-1, pixel_count * self.data.image_depth])
+        weights = weight_variable([pixel_count * self.data.image_depth, pixel_count], stddev=0.001)
         biases = bias_variable([pixel_count], constant=0.001)
 
         flat_predicted_labels = tf.matmul(flat_images, weights) + biases
-        predicted_labels = tf.reshape(flat_predicted_labels, [-1, self.data.height, self.data.width, 1])
+        predicted_labels = tf.reshape(flat_predicted_labels, [-1, self.data.image_height, self.data.image_width, 1])
         return predicted_labels
 
     def create_loss_tensor(self, predicted_labels, labels):
@@ -147,7 +147,7 @@ class GoNet(multiprocessing.Process):
         b = tf.maximum(0.0, (1 - ratio))
         r = tf.maximum(0.0, (ratio - 1))
         g = 1 - b - r
-        return tf.concat(3, [r, g, b]) - 0.5
+        return (tf.concat(3, [r, g, b]) * 2) - 1
 
     def image_comparison_summary(self, images, labels, predicted_labels, label_differences):
         """
@@ -166,8 +166,10 @@ class GoNet(multiprocessing.Process):
         label_heat_map = self.convert_to_heat_map_rgb(labels)
         predicted_label_heat_map = self.convert_to_heat_map_rgb(predicted_labels)
         label_difference_heat_map = self.convert_to_heat_map_rgb(label_differences)
+        display_images = tf.div(images, tf.reduce_max(tf.abs(images)))
 
-        comparison_image = tf.concat(1, [images, label_heat_map, predicted_label_heat_map, label_difference_heat_map])
+        comparison_image = tf.concat(1, [display_images, label_heat_map, predicted_label_heat_map,
+                                         label_difference_heat_map])
         tf.image_summary('comparison', comparison_image)
 
     def interface_handler(self):
@@ -279,7 +281,7 @@ class GoNet(multiprocessing.Process):
                     )
                     duration = time.time() - start_time
                     validation_writer.add_summary(summaries, self.step)
-                    print('Validation step %d: %s = %.5f (%.3f sec / step)' % (self.step, self.step_summary_name,
+                    print('Validation step %d: %s = %.5g (%.3f sec / step)' % (self.step, self.step_summary_name,
                                                                                loss, duration))
 
                 self.step += 1
@@ -314,7 +316,7 @@ class GoNet(multiprocessing.Process):
         )
         validation_images_tensor, validation_labels_tensor = self.data.create_input_tensors_for_dataset(
             data_type='validation',
-            batch_size=self.data.validation_size
+            batch_size=self.batch_size
         )
         images_tensor, labels_tensor = self.create_feed_selectable_input_tensors(
             {
@@ -370,16 +372,25 @@ class GoNet(multiprocessing.Process):
         """
         self.train()
 
-    def predict(self, model_file_name='crowd_net'):
+    def predict(self, model_file_name=None):
         """
         Use a trained model to predict labels for a new set of images.
 
         :param model_file_name: The trained model's file name.
         :type model_file_name: str
         """
+        if model_file_name is None:
+            model_file_name = self.network_name
+
         print('Preparing data...')
         # Setup the inputs.
-        images_tensor = tf.placeholder(tf.float32, [None, self.data.height, self.data.width, 3])
+        original_images = np.load('test_images.npy').astype(np.float32)
+        images = self.data.shrink_array_with_rebinning(original_images)
+        np.save('shrunk_images.npy', images.astype(np.uint8))
+        images -= np.mean(images)
+        images /= np.std(images)
+
+        images_tensor = tf.placeholder(tf.float32, [None, self.data.image_height, self.data.image_width, 3])
 
         print('Building graph...')
         # Add the forward pass operations to the graph.
@@ -401,9 +412,7 @@ class GoNet(multiprocessing.Process):
         saver.restore(session, os.path.join('models', model_file_name))
 
         # Preform the training loop.
-        images = np.load('test_images.npy')
-        images = self.data.shrink_array_with_rebinning(images)
-        labels = session.run([predicted_labels_tensor], feed_dict={images_tensor: images.astype(np.float32),
+        labels = session.run([predicted_labels_tensor], feed_dict={images_tensor: images,
                                                                    self.dropout_keep_probability_tensor: 1.0})
         np.save(os.path.join(self.data.data_directory, 'predicted_labels'), labels)
 
