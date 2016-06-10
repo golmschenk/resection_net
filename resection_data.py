@@ -4,6 +4,7 @@ Code for managing the resectioning data.
 from math import pi, acos
 import h5py
 import numpy as np
+import tensorflow as tf
 
 from go_data import GoData
 
@@ -15,13 +16,16 @@ class ResectionData(GoData):
     def __init__(self):
         super().__init__()
 
-        self.height = self.original_height
-        self.width = self.original_width
-        self.image_shape = [self.height, self.width, self.channels]
-        self.label_shape = [2]
+        self.image_height = 464
+        self.image_width = 624
 
-        self.import_directory = '/Gold/nyu_depth_v2_mat'
-        self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
+        self.label_height = 2
+
+        self.import_directory = 'data/import'
+        self.data_directory = 'data'
+
+        #self.import_directory = '/Gold/nyu_depth_v2_mat'
+        #self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
         self.data_name = None
 
         self.train_size = 'all'
@@ -40,6 +44,7 @@ class ResectionData(GoData):
             images = self.crop_data(uncropped_images)
             acceleration_data = self.convert_mat_data_to_numpy_array(mat_data, 'accelData')
             if acceleration_data.shape[0] == 4:
+                assert acceleration_data.shape[1] != 4
                 acceleration_data = acceleration_data.transpose()
             acceleration_vectors = acceleration_data[:, :3]
             gravity_vectors = np.multiply(acceleration_vectors, -1)  # The acceleration is in the up direction.
@@ -93,6 +98,35 @@ class ResectionData(GoData):
         x = xy_vector[0]
         roll = -(pi / 2 - acos(x))
         return roll
+
+    def preaugmentation_preprocess(self, image, label):
+        """
+        Preprocesses the image and label to be in the correct format for training.
+        Overrides GoNet method.
+
+        :param image: The image to be processed.
+        :type image: tf.Tensor
+        :param label: The label to be processed.
+        :type label: tf.Tensor
+        :return: The processed image and label.
+        :rtype: (tf.Tensor, tf.Tensor)
+        """
+        image = tf.image.resize_images(image, self.image_height, self.image_width)
+        label = tf.reshape(label, [self.label_height])
+        return image, label
+
+    @staticmethod
+    def horizontally_flip_label(label):
+        """
+        Changes the roll to be the negative of its current value.
+        Overrides GoNet method.
+
+        :param label: The label to be "flipped".
+        :type label: tf.Tensor
+        :return: The "flipped" label.
+        :rtype: tf.Tensor
+        """
+        return tf.mul(label, [1.0, -1.0])
 
 
 if __name__ == '__main__':

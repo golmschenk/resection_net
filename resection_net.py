@@ -62,9 +62,9 @@ class ResectionNet(GoNet):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.data.height * self.data.width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.data.channels])
-        weights = weight_variable([pixel_count * self.data.channels, 2], stddev=0.001)
+        pixel_count = self.data.image_height * self.data.image_width
+        flat_images = tf.reshape(images, [-1, pixel_count * self.data.image_depth])
+        weights = weight_variable([pixel_count * self.data.image_depth, 2], stddev=0.001)
         biases = bias_variable([2], constant=0.001)
 
         flat_predicted_labels = tf.matmul(flat_images, weights) + biases
@@ -80,9 +80,9 @@ class ResectionNet(GoNet):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.data.height * self.data.width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.data.channels])
-        weights = weight_variable([pixel_count * self.data.channels, 64], stddev=0.001)
+        pixel_count = self.data.image_height * self.data.image_width
+        flat_images = tf.reshape(images, [-1, pixel_count * self.data.image_depth])
+        weights = weight_variable([pixel_count * self.data.image_depth, 64], stddev=0.001)
         biases = bias_variable([64], constant=0.001)
 
         flat_hypothesis = tf.matmul(flat_images, weights) + biases
@@ -140,8 +140,8 @@ class ResectionNet(GoNet):
             h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
 
         with tf.name_scope('fc1'):
-            fc0_size = size_from_stride_two(self.data.height, iterations=6) * size_from_stride_two(self.data.width,
-                                                                                                   iterations=6) * 256
+            fc0_size = size_from_stride_two(self.data.image_height, iterations=6) * size_from_stride_two(
+                self.data.image_width, iterations=6) * 256
             fc1_size = 2
             h_fc = tf.reshape(h_conv, [-1, fc0_size])
             w_fc = weight_variable([fc0_size, fc1_size])
@@ -201,8 +201,8 @@ class ResectionNet(GoNet):
             h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
 
         with tf.name_scope('fc1'):
-            fc0_size = size_from_stride_two(self.data.height, iterations=6) * size_from_stride_two(self.data.width,
-                                                                                                   iterations=6) * 256
+            fc0_size = size_from_stride_two(self.data.image_height, iterations=6) * size_from_stride_two(
+                self.data.image_width, iterations=6) * 256
             fc1_size = 2
             h_fc = tf.reshape(h_conv_drop, [-1, fc0_size])
             w_fc = weight_variable([fc0_size, fc1_size])
