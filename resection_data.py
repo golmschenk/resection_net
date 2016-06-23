@@ -21,15 +21,8 @@ class ResectionData(GoData):
 
         self.label_height = 2
 
-        self.import_directory = 'data/import'
-        self.data_directory = 'data'
-
-        #self.import_directory = '/Gold/nyu_depth_v2_mat'
-        #self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
-        self.data_name = None
-
-        self.train_size = 'all'
-        self.validation_size = 50
+        self.import_directory = '/Gold/nyu_depth_v2_mat'
+        self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
 
     def import_mat_file(self, mat_path):
         """
@@ -112,7 +105,7 @@ class ResectionData(GoData):
         :rtype: (tf.Tensor, tf.Tensor)
         """
         image = tf.image.resize_images(image, self.image_height, self.image_width)
-        label = tf.reshape(label, [self.label_height])
+        label = tf.reshape(label, [self.label_height]) + 1.0
         return image, label
 
     @staticmethod
