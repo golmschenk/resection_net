@@ -29,10 +29,6 @@ class GoData:
         self.images = None
         self.labels = None
 
-        self.train_size = 9
-        self.validation_size = 1
-        self.test_size = 0
-
         # Internal attributes.
         self._label_height = None
         self._label_width = None
@@ -607,11 +603,24 @@ class GoData:
         Creates the TFRecords for the data.
         """
         import_file_paths = self.attain_import_file_paths()
+        if not import_file_paths:
+            print('No data found in %s.' % self.import_directory)
         for import_file_path in import_file_paths:
-            print('Converting %s...' % import_file_path)
+            print('Converting %s...' % str(import_file_path))
             self.import_file(import_file_path)
-            self.data_name = os.path.splitext(os.path.basename(import_file_path))[0]
+            self.obtain_export_name(import_file_path)
             self.convert_to_tfrecords()
+
+    def obtain_export_name(self, import_file_path):
+        """
+        Extracts the name to be used for the export file.
+
+        :param import_file_path: The import path.
+        :type import_file_path: str | (str, str)
+        :return: The name of the export file.
+        :rtype: str
+        """
+        self.data_name = os.path.splitext(os.path.basename(import_file_path))[0]
 
     def attain_import_file_paths(self):
         """
