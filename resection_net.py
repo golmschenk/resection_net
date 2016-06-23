@@ -23,9 +23,7 @@ class ResectionNet(GoNet):
         self.image_summary_on = False
 
         self.batch_size = 50
-        self.initial_learning_rate = 0.0001
-        self.summary_step_period = 1
-        self.validation_step_period = 1
+        self.initial_learning_rate = 0.00001
 
     def create_loss_tensor(self, predicted_labels, labels):
         """
@@ -51,7 +49,7 @@ class ResectionNet(GoNet):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        return self.create_deep_inference_op(images)
+        return self.create_deep_with_dropout_inference_op(images)
 
     def create_linear_classifier_inference_op(self, images):
         """
