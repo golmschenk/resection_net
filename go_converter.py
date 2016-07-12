@@ -81,19 +81,19 @@ class GoConverter:
         np.save(output_numpy_path, images)
 
     @staticmethod
-    def natural_sort_key(sequence, _natural_sort_regex=re.compile('([0-9]+)')):
+    def natural_sort_key(element, _natural_sort_regex=re.compile('([0-9]+)')):
         """
         A key to allow for natural sorting.
         Taken from: http://stackoverflow.com/a/16090640/1191087
 
-        :param sequence: The sequence to sort.
-        :type sequence: list[TypeVar('T')]
+        :param element: The element under consideration.
+        :type element: str
         :param _natural_sort_regex: The regex of the natural sort.
         :type _natural_sort_regex: type(re.compile(''))
         :return: The natural sort key.
         :rtype: list[int]
         """
-        return [int(text) if text.isdigit() else text.lower() for text in re.split(_natural_sort_regex, sequence)]
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(_natural_sort_regex, element)]
 
     def convert_video_to_numpy(self, input_video_path, output_numpy_path, frames_per_second=30):
         """
