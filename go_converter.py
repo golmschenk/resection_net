@@ -73,7 +73,7 @@ class GoConverter:
         image_list = []
         for file_name in file_name_list:
             if file_name.endswith(image_types):
-                image_file = Image.open(file_name)
+                image_file = Image.open(os.path.join(input_images_directory, file_name))
                 image_file.load()
                 image = np.asarray(image_file, dtype="uint8")
                 image_list.append(image)
@@ -112,3 +112,20 @@ class GoConverter:
         self.convert_video_to_images(input_video_path, temporary_frames_directory, frames_per_second=frames_per_second)
         self.convert_images_to_numpy(temporary_frames_directory, output_numpy_path)
         shutil.rmtree(temporary_frames_directory)
+
+    @staticmethod
+    def convert_bgr_numpy_to_rgb_numpy(input_numpy_path, output_numpy_path):
+        """
+        Converts images in NumPy from BGR to RGB (and vica versa).
+
+        :param input_numpy_path: The original numpy file path.
+        :type input_numpy_path: str
+        :param output_numpy_path: The location to save the converted data.
+        :type output_numpy_path: str
+        """
+        images = np.load(input_numpy_path)
+        if len(images.shape) == 3:
+            new_images = images[:, :, [2, 1, 0]]
+        else:
+            new_images = images[:, :, :, [2, 1, 0]]
+        np.save(output_numpy_path, new_images)
