@@ -47,6 +47,7 @@ class GoNet(multiprocessing.Process):
         self.dropout_keep_probability_tensor = tf.placeholder(tf.float32)
         self.learning_rate_tensor = tf.placeholder(tf.float32)
         self.queue = message_queue
+        self.predicted_test_labels = None
 
         os.nice(10)
 
@@ -171,7 +172,7 @@ class GoNet(multiprocessing.Process):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        return self.create_linear_classifier_inference_op(images)
+        return tf.identity(self.create_linear_classifier_inference_op(images), name='inference_op')
 
     def create_linear_classifier_inference_op(self, images):
         """
@@ -418,7 +419,7 @@ class GoNet(multiprocessing.Process):
 
         print('Building graph...')
         # Add the forward pass operations to the graph.
-        predicted_labels_tensor = self.create_inference_op(images_tensor)
+        self.create_inference_op(images_tensor)
 
         # The op for initializing the variables.
         initialize_op = tf.initialize_all_variables()
@@ -442,19 +443,13 @@ class GoNet(multiprocessing.Process):
         coordinator = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.session, coord=coordinator)
 
-        predicted_labels = np.ndarray(shape=[0] + list(self.data.label_shape), dtype=np.float32).squeeze()
+        self.test_run_preloop()
 
         # Preform the prediction loop.
         try:
             while not coordinator.should_stop() and not self.stop_signal:
-                # Regular prediction step.
-                predicted_labels_batch = self.session.run(
-                    predicted_labels_tensor,
-                    feed_dict={**self.default_feed_dictionary, self.dropout_keep_probability_tensor: 1.0}
-                )
-                predicted_labels = np.concatenate((predicted_labels, predicted_labels_batch))
+                self.test_run_loop_step()
                 self.step += 1
-                print('{image_count} images processed.'.format(image_count=self.step * self.batch_size))
         except tf.errors.OutOfRangeError:
             if self.step == 0:
                 print('Data not found.')
@@ -464,15 +459,37 @@ class GoNet(multiprocessing.Process):
             # When done, ask the threads to stop.
             coordinator.request_stop()
 
+        self.test_run_postloop()
+
         # Wait for threads to finish.
         coordinator.join(threads)
         self.session.close()
 
+    def test_run_preloop(self):
+        """
+        The code run before the test loop. Mostly for setting up things that will be used within the loop.
+        """
+        self.predicted_test_labels = np.ndarray(shape=[0] + list(self.data.label_shape), dtype=np.float32)
+
+    def test_run_loop_step(self):
+        """
+        The code that will be used during the each iteration of the test loop (excluding the step incrementation).
+        """
+        predicted_labels_tensor = self.session.graph.get_tensor_by_name('inference_op:0')
+        predicted_labels_batch = self.session.run(
+            predicted_labels_tensor,
+            feed_dict={**self.default_feed_dictionary, self.dropout_keep_probability_tensor: 1.0}
+        )
+        self.predicted_test_labels = np.concatenate((self.predicted_test_labels, predicted_labels_batch))
+        print('{image_count} images processed.'.format(image_count=(self.step + 1) * self.batch_size))
+
+    def test_run_postloop(self):
+        """
+        The code that will be run once the inference test loop is finished. Mostly for saving data or statistics.
+        """
         predicted_labels_save_path = os.path.join(self.data.data_directory, 'predicted_labels')
         print('Saving labels to {}.npy...'.format(predicted_labels_save_path))
-        np.save(predicted_labels_save_path, predicted_labels)
-
-        self.session.close()
+        np.save(predicted_labels_save_path, self.predicted_test_labels)
 
     def attain_latest_model_path(self):
         """
