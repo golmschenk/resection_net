@@ -22,7 +22,7 @@ class ResectionNet(GoNet):
         self.step_summary_name = "Loss"
         self.image_summary_on = False
 
-        self.batch_size = 50
+        self.batch_size = 3
         self.initial_learning_rate = 0.00001
 
     def create_loss_tensor(self, predicted_labels, labels):
@@ -213,4 +213,4 @@ class ResectionNet(GoNet):
 
 if __name__ == '__main__':
     interface = Interface(network_class=ResectionNet)
-    interface.train()
+    interface.run()

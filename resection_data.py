@@ -20,6 +20,7 @@ class ResectionData(GoData):
         self.image_width = 624
 
         self.label_height = 2
+        self.label_width = 1
 
         self.import_directory = '/Gold/nyu_depth_v2_mat'
         self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
