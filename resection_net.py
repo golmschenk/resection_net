@@ -1,7 +1,9 @@
 """
 Code related to the ResectionNet.
 """
+import numpy as np
 import tensorflow as tf
+import math
 
 from resection_data import ResectionData
 from go_net import GoNet
@@ -22,8 +24,10 @@ class ResectionNet(GoNet):
         self.step_summary_name = "Loss"
         self.image_summary_on = False
 
-        self.batch_size = 3
+        self.batch_size = 50
         self.initial_learning_rate = 0.00001
+
+        self.test_labels = None
 
     def create_loss_tensor(self, predicted_labels, labels):
         """
@@ -49,7 +53,8 @@ class ResectionNet(GoNet):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        return self.create_deep_with_dropout_inference_op(images)
+        inference_op = self.create_deep_with_dropout_inference_op(images)
+        return tf.identity(inference_op, name='inference_op')
 
     def create_linear_classifier_inference_op(self, images):
         """
@@ -209,6 +214,73 @@ class ResectionNet(GoNet):
             predicted_labels = leaky_relu(tf.matmul(h_fc, w_fc) + b_fc)
 
         return predicted_labels
+
+    def test_run_preloop(self):
+        """
+        The code run before the test loop. Mostly for setting up things that will be used within the loop.
+        """
+        self.test_labels = np.ndarray(shape=[0, 2], dtype=np.float32)
+        self.predicted_test_labels = np.ndarray(shape=[0, 2], dtype=np.float32)
+
+    def test_run_loop_step(self):
+        """
+        The code that will be used during the each iteration of the test loop (excluding the step incrementation).
+        """
+        predicted_labels_tensor = self.session.graph.get_tensor_by_name('inference_op:0')
+        labels_tensor = self.session.graph.get_tensor_by_name('labels_tensor:0')
+        predicted_labels_batch, labels_batch = self.session.run(
+            [predicted_labels_tensor, labels_tensor],
+            feed_dict={**self.default_feed_dictionary, self.dropout_keep_probability_tensor: 1.0}
+        )
+        self.test_labels = np.concatenate((self.test_labels, labels_batch))
+        self.predicted_test_labels = np.concatenate((self.predicted_test_labels, predicted_labels_batch))
+        print('{image_count} images processed.'.format(image_count=(self.step + 1) * self.batch_size))
+
+    def test_run_postloop(self):
+        """
+        The code that will be run once the inference test loop is finished. Mostly for saving data or statistics.
+        """
+        absolute_difference = np.abs(self.predicted_test_labels - self.test_labels)
+        squared_difference = np.square(absolute_difference)
+        axis_mean_labels = np.mean(self.test_labels, axis=0)
+        absolute_deviation = np.abs(self.test_labels - axis_mean_labels)
+        mean_difference = np.mean(absolute_difference)
+        mean_squared_difference = np.mean(squared_difference)
+        axis_mean_difference = np.mean(absolute_difference, axis=0)
+        axis_mean_squared_difference = np.mean(squared_difference, axis=0)
+        axis_labels_standard_deviation = np.std(self.test_labels, axis=0)
+        axis_mean_absolute_devation = np.mean(absolute_deviation, axis=0)
+
+        print('Radians')
+        print('Combined mean absolute difference: {}'.format(mean_difference))
+        print('Combined mean squared difference: {}'.format(mean_squared_difference))
+        print('Pitch mean absolute difference: {}'.format(axis_mean_difference[0]))
+        print('Pitch mean squared difference: {}'.format(axis_mean_squared_difference[0]))
+        print('Roll mean absolute difference: {}'.format(axis_mean_difference[1]))
+        print('Roll mean squared difference: {}'.format(axis_mean_squared_difference[1]))
+        print('Ground truth pitch mean: {}'.format(axis_mean_labels[0]))
+        print('Ground truth roll mean: {}'.format(axis_mean_labels[1]))
+        print('Ground truth combined standard deviation: {}'.format(np.std(self.test_labels)))
+        print('Ground truth pitch standard deviation: {}'.format(axis_labels_standard_deviation[0]))
+        print('Ground truth roll standard deviation: {}'.format(axis_labels_standard_deviation[1]))
+        print('Ground truth combined mean absolute deviation: {}'.format(np.mean(absolute_deviation)))
+        print('Ground truth pitch mean absolute deviation: {}'.format(axis_mean_absolute_devation[0]))
+        print('Ground truth roll mean absolute deviation: {}'.format(axis_mean_absolute_devation[1]))
+        print('Degrees')
+        print('Combined mean absolute difference: {}'.format(math.degrees(mean_difference)))
+        print('Combined mean squared difference: {}'.format(math.degrees(mean_squared_difference)))
+        print('Pitch mean absolute difference: {}'.format(math.degrees(axis_mean_difference[0])))
+        print('Pitch mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[0])))
+        print('Roll mean absolute difference: {}'.format(math.degrees(axis_mean_difference[1])))
+        print('Roll mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[1])))
+        print('Ground truth pitch mean: {}'.format(math.degrees(axis_mean_labels[0])))
+        print('Ground truth roll mean: {}'.format(math.degrees(axis_mean_labels[1])))
+        print('Ground truth combined standard deviation: {}'.format(math.degrees(np.std(self.test_labels))))
+        print('Ground truth pitch standard deviation: {}'.format(math.degrees(axis_labels_standard_deviation[0])))
+        print('Ground truth roll standard deviation: {}'.format(math.degrees(axis_labels_standard_deviation[1])))
+        print('Ground truth combined mean absolute deviation: {}'.format(math.degrees(np.mean(absolute_deviation))))
+        print('Ground truth pitch mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_devation[0])))
+        print('Ground truth roll mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_devation[1])))
 
 
 if __name__ == '__main__':
