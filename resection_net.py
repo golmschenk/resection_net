@@ -240,6 +240,10 @@ class ResectionNet(GoNet):
         """
         The code that will be run once the inference test loop is finished. Mostly for saving data or statistics.
         """
+        # Take into account that 1 was added to all label values.
+        self.predicted_test_labels -= 1.0
+        self.test_labels -= 1.0
+
         absolute_difference = np.abs(self.predicted_test_labels - self.test_labels)
         squared_difference = np.square(absolute_difference)
         axis_mean_labels = np.mean(self.test_labels, axis=0)
@@ -267,20 +271,20 @@ class ResectionNet(GoNet):
         print('Ground truth pitch mean absolute deviation: {}'.format(axis_mean_absolute_devation[0]))
         print('Ground truth roll mean absolute deviation: {}'.format(axis_mean_absolute_devation[1]))
         print('Degrees')
-        print('Combined mean absolute difference: {}'.format(math.degrees(mean_difference)))
-        print('Combined mean squared difference: {}'.format(math.degrees(mean_squared_difference)))
-        print('Pitch mean absolute difference: {}'.format(math.degrees(axis_mean_difference[0])))
-        print('Pitch mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[0])))
-        print('Roll mean absolute difference: {}'.format(math.degrees(axis_mean_difference[1])))
-        print('Roll mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[1])))
         print('Ground truth pitch mean: {}'.format(math.degrees(axis_mean_labels[0])))
         print('Ground truth roll mean: {}'.format(math.degrees(axis_mean_labels[1])))
         print('Ground truth combined standard deviation: {}'.format(math.degrees(np.std(self.test_labels))))
+        print('Combined mean squared difference: {}'.format(math.degrees(mean_squared_difference)))
         print('Ground truth pitch standard deviation: {}'.format(math.degrees(axis_labels_standard_deviation[0])))
+        print('Pitch mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[0])))
         print('Ground truth roll standard deviation: {}'.format(math.degrees(axis_labels_standard_deviation[1])))
+        print('Roll mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[1])))
         print('Ground truth combined mean absolute deviation: {}'.format(math.degrees(np.mean(absolute_deviation))))
+        print('Combined mean absolute difference: {}'.format(math.degrees(mean_difference)))
         print('Ground truth pitch mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_devation[0])))
+        print('Pitch mean absolute difference: {}'.format(math.degrees(axis_mean_difference[0])))
         print('Ground truth roll mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_devation[1])))
+        print('Roll mean absolute difference: {}'.format(math.degrees(axis_mean_difference[1])))
 
 
 if __name__ == '__main__':
