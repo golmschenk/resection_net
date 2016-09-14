@@ -6,10 +6,10 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
-from go_data import GoData
+from gonet.data import Data
 
 
-class ResectionData(GoData):
+class ResectionData(Data):
     """
     A class for managing the resectioning data.
     """
@@ -22,8 +22,8 @@ class ResectionData(GoData):
         self.label_height = 2
         self.label_width = 1
 
-        self.import_directory = '/Gold/nyu_depth_v2_mat'
-        self.data_directory = '/Gold/nyu_depth_v2_tfrecords'
+        self.import_directory = 'data/import'
+        self.data_directory = 'data'
 
     def import_mat_file(self, mat_path):
         """

@@ -6,12 +6,12 @@ import tensorflow as tf
 import math
 
 from resection_data import ResectionData
-from go_net import GoNet
-from interface import Interface
-from convenience import weight_variable, bias_variable, leaky_relu, conv2d, size_from_stride_two
+from gonet.net import Net
+from gonet.interface import Interface
+from gonet.convenience import weight_variable, bias_variable, leaky_relu, conv2d, size_from_stride_two
 
 
-class ResectionNet(GoNet):
+class ResectionNet(Net):
     """
     A neural network class to estimate camera parameters from 2D images.
     """
@@ -227,7 +227,7 @@ class ResectionNet(GoNet):
         The code that will be used during the each iteration of the test loop (excluding the step incrementation).
         """
         predicted_labels_tensor = self.session.graph.get_tensor_by_name('inference_op:0')
-        labels_tensor = self.session.graph.get_tensor_by_name('labels_tensor:0')
+        labels_tensor = self.session.graph.get_tensor_by_name('labels_input_op:0')
         predicted_labels_batch, labels_batch = self.session.run(
             [predicted_labels_tensor, labels_tensor],
             feed_dict={**self.default_feed_dictionary, self.dropout_keep_probability_tensor: 1.0}
