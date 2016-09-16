@@ -5,10 +5,12 @@ import numpy as np
 import tensorflow as tf
 import math
 
+from tensorflow.contrib.layers import batch_norm
+
 from resection_data import ResectionData
 from gonet.net import Net
 from gonet.interface import Interface
-from gonet.convenience import weight_variable, bias_variable, leaky_relu, conv2d, size_from_stride_two
+from gonet.convenience import weight_variable, bias_variable, leaky_relu, conv2d, size_from_stride_two, conv_layer
 
 
 class ResectionNet(Net):
@@ -24,7 +26,7 @@ class ResectionNet(Net):
         self.step_summary_name = "Loss"
         self.image_summary_on = False
 
-        self.batch_size = 50
+        self.batch_size = 5
         self.initial_learning_rate = 0.00001
 
         self.test_labels = None
@@ -106,41 +108,12 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        with tf.name_scope('conv1'):
-            w_conv = weight_variable([3, 3, 3, 16])
-            b_conv = bias_variable([16])
-
-            h_conv = leaky_relu(conv2d(images, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv2'):
-            w_conv = weight_variable([3, 3, 16, 32])
-            b_conv = bias_variable([32])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv3'):
-            w_conv = weight_variable([3, 3, 32, 64])
-            b_conv = bias_variable([64])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv4'):
-            w_conv = weight_variable([3, 3, 64, 128])
-            b_conv = bias_variable([128])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv5'):
-            w_conv = weight_variable([3, 3, 128, 256])
-            b_conv = bias_variable([256])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv6'):
-            w_conv = weight_variable([10, 10, 256, 256])
-            b_conv = bias_variable([256])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
+        h_conv = conv_layer('conv1', images, 3, 16, strides=(1, 2, 2, 1))
+        h_conv = conv_layer('conv2', h_conv, 16, 32, strides=(1, 2, 2, 1))
+        h_conv = conv_layer('conv3', h_conv, 32, 64, strides=(1, 2, 2, 1))
+        h_conv = conv_layer('conv4', h_conv, 64, 128, strides=(1, 2, 2, 1))
+        h_conv = conv_layer('conv5', h_conv, 128, 256, strides=(1, 2, 2, 1))
+        h_conv = conv_layer('conv6', h_conv, 256, 256, conv_height=10, conv_width=10, strides=(1, 2, 2, 1))
 
         with tf.name_scope('fc1'):
             fc0_size = size_from_stride_two(self.data.image_height, iterations=6) * size_from_stride_two(
@@ -163,45 +136,22 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        with tf.name_scope('conv1'):
-            w_conv = weight_variable([3, 3, 3, 16])
-            b_conv = bias_variable([16])
 
-            h_conv = leaky_relu(conv2d(images, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv2'):
-            w_conv = weight_variable([3, 3, 16, 32])
-            b_conv = bias_variable([32])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-
-        with tf.name_scope('conv3'):
-            w_conv = weight_variable([3, 3, 32, 64])
-            b_conv = bias_variable([64])
-
-            h_conv = leaky_relu(conv2d(h_conv, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-            h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
-
-        with tf.name_scope('conv4'):
-            w_conv = weight_variable([3, 3, 64, 128])
-            b_conv = bias_variable([128])
-
-            h_conv = leaky_relu(conv2d(h_conv_drop, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-            h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
-
-        with tf.name_scope('conv5'):
-            w_conv = weight_variable([3, 3, 128, 256])
-            b_conv = bias_variable([256])
-
-            h_conv = leaky_relu(conv2d(h_conv_drop, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-            h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
-
-        with tf.name_scope('conv6'):
-            w_conv = weight_variable([10, 10, 256, 256])
-            b_conv = bias_variable([256])
-
-            h_conv = leaky_relu(conv2d(h_conv_drop, w_conv, strides=[1, 2, 2, 1]) + b_conv)
-            h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
+        h_conv = conv_layer('conv1', images, 3, 16, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv = batch_norm(h_conv)
+        h_conv = conv_layer('conv2', h_conv, 16, 32, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv = batch_norm(h_conv)
+        h_conv = conv_layer('conv3', h_conv, 32, 64, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
+        h_conv = batch_norm(h_conv)
+        h_conv = conv_layer('conv4', h_conv, 64, 128, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
+        h_conv = batch_norm(h_conv)
+        h_conv = conv_layer('conv5', h_conv, 128, 256, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
+        h_conv = batch_norm(h_conv)
+        h_conv = conv_layer('conv6', h_conv, 256, 256, conv_height=10, conv_width=10, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
 
         with tf.name_scope('fc1'):
             fc0_size = size_from_stride_two(self.data.image_height, iterations=6) * size_from_stride_two(
