@@ -74,7 +74,8 @@ class GroundTruth():
         y = determinant(d, y_diff) / div
         return Point(x, y)
 
-    def attain_line_segment_pairs_from_line_segments(self, line_segments):
+    @staticmethod
+    def attain_line_segment_pairs_from_line_segments(line_segments):
         """
         Gets the pairs of line segments from the list of line_segments.
 
@@ -98,6 +99,16 @@ class GroundTruth():
         else:
             sys.exit("Found {} segment pairs. Should have found 2.".format(len(pairs)))
 
+    def attain_vanishing_points_from_line_segment_pairs(self, line_segment_pairs):
+        vanishing_points = []
+        for line_segment_pair in line_segment_pairs:
+            intersection_point = self.attain_line_intersection(line_segment_pair[0], line_segment_pair[1])
+            vanishing_point = VanishingPoint(intersection_point[0], intersection_point[1], line_segment_pair[0].axis)
+            vanishing_points.append(vanishing_point)
+        return vanishing_points
+
+
     def attain_rotation_matrix_from_label_me_xml(self, xml_file_name):
         line_segments = self.extract_line_segments_from_label_me_xml(xml_file_name=xml_file_name)
         line_segment_pairs = self.attain_line_segment_pairs_from_line_segments(line_segments=line_segments)
+        vanishing_points = self.attain_vanishing_points_from_line_segment_pairs(line_segment_pairs=line_segment_pairs)
