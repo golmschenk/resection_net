@@ -5,7 +5,8 @@ from collections import namedtuple
 from xml.etree import ElementTree
 
 Point = namedtuple('Point', ['x', 'y'])
-LineSegment = namedtuple('Line', ['start', 'end', 'type'])
+VanishingPoint = namedtuple('VanishingPoint', ['x', 'y', 'axis'])
+LineSegment = namedtuple('Line', ['start', 'end', 'axis'])
 
 class GroundTruth():
     """
@@ -31,7 +32,35 @@ class GroundTruth():
                 continue
             point0 = Point(x=int(points[0][0].text), y=int(points[0][1].text))
             point1 = Point(x=int(points[1][0].text), y=int(points[1][1].text))
-            type_ = object_entry.find('name').text
-            line_segment = LineSegment(start=point0, end=point1, type=type_)
+            axis = object_entry.find('attribute').text
+            line_segment = LineSegment(start=point0, end=point1, axis=axis)
             line_segments.append(line_segment)
         return line_segments
+
+    @staticmethod
+    def attain_line_intersection(line_segment1, line_segment2):
+        """
+        Gives where two line segments intersect (if they were infinitely long).
+
+        :param line_segment1: The first line segment.
+        :type line_segment1: LineSegment
+        :param line_segment2: The second line segment.
+        :type line_segment2: LineSegment
+        :return: The point of the intersection
+        :rtype:
+        """
+        x_diff = Point(line_segment1.start.x - line_segment1.end.x, line_segment2.start.x - line_segment2.end.x)
+        y_diff = Point(line_segment1.start.y - line_segment1.end.y, line_segment2.start.y - line_segment2.end.y)
+
+        def determinant(a, b):
+            return a.x * b.y - a.y * b.x
+
+        div = determinant(x_diff, y_diff)
+        if div == 0:
+            raise Exception('lines do not intersect')
+
+        d = Point(determinant(line_segment1.start, line_segment1.end),
+                  determinant(line_segment2.start, line_segment2.end))
+        x = determinant(d, x_diff) / div
+        y = determinant(d, y_diff) / div
+        return Point(x, y)
