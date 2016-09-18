@@ -147,9 +147,30 @@ class GroundTruth:
         elif vanishing_point[2] == 'z':
             self.r3 = r
 
+    def obtain_missing_rotation_column(self):
+        """
+        Given that the other two rotation columns are already calculated, calculate the last one.
+        """
+        if not self.r1:
+            self.r1 = np.cross(self.r2, self.r3)
+        elif not self.r2:
+            self.r2 = np.cross(self.r3, self.r1)
+        elif not self.r3:
+            self.r3 = np.cross(self.r1, self.r2)
+
     def attain_rotation_matrix_from_label_me_xml(self, xml_file_name):
+        """
+        Calculates the rotation matrix from a given LabelMe XML annotation file.
+
+        :param xml_file_name: The XML file path.
+        :type xml_file_name: str
+        :return: The rotation matrix.
+        :rtype: np.ndarray
+        """
         line_segments = self.extract_line_segments_from_label_me_xml(xml_file_name=xml_file_name)
         line_segment_pairs = self.attain_line_segment_pairs_from_line_segments(line_segments=line_segments)
         vanishing_points = self.attain_vanishing_points_from_line_segment_pairs(line_segment_pairs=line_segment_pairs)
         for vanishing_point in vanishing_points:
             self.obtain_rotation_column(vanishing_point=vanishing_point)
+        self.obtain_missing_rotation_column()
+        return np.concatenate((self.r1, self.r2, self.r3))
