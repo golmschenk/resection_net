@@ -1,12 +1,21 @@
 """
 Code for generating ground truth data to check the accelerometer data accuracy.
 """
+import numpy as np
 from collections import namedtuple
 from xml.etree import ElementTree
+
+import sys
 
 Point = namedtuple('Point', ['x', 'y'])
 VanishingPoint = namedtuple('VanishingPoint', ['x', 'y', 'axis'])
 LineSegment = namedtuple('Line', ['start', 'end', 'axis'])
+
+
+kinect_factory_calibration = np.array([5.2161910696979987e+02, 0., 3.1755491910920682e+02,
+                                       0., 5.2132946256749767e+02, 2.5921654718027673e+02,
+                                       0., 0., 1.])
+
 
 class GroundTruth():
     """
@@ -64,3 +73,31 @@ class GroundTruth():
         x = determinant(d, x_diff) / div
         y = determinant(d, y_diff) / div
         return Point(x, y)
+
+    def attain_line_segment_pairs_from_line_segments(self, line_segments):
+        """
+        Gets the pairs of line segments from the list of line_segments.
+
+        :param line_segments: The list of line segments to sort through.
+        :type line_segments: list[LineSegments]
+        :return: The pairs of line segments.
+        :rtype: list[(LineSegment, LineSegment)]
+        """
+        x_pair = [line_segment for line_segment in line_segments if line_segment.axis == 'x']
+        y_pair = [line_segment for line_segment in line_segments if line_segment.axis == 'y']
+        z_pair = [line_segment for line_segment in line_segments if line_segment.axis == 'z']
+        pairs = []
+        if len(x_pair) == 2:
+            pairs.append(x_pair)
+        if len(y_pair) == 2:
+            pairs.append(y_pair)
+        if len(z_pair) == 2:
+            pairs.append(z_pair)
+        if len(pairs) == 2:
+            return pairs
+        else:
+            sys.exit("Found {} segment pairs. Should have found 2.".format(len(pairs)))
+
+    def attain_rotation_matrix_from_label_me_xml(self, xml_file_name):
+        line_segments = self.extract_line_segments_from_label_me_xml(xml_file_name=xml_file_name)
+        line_segment_pairs = self.attain_line_segment_pairs_from_line_segments(line_segments=line_segments)
