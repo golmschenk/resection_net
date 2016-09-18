@@ -14,13 +14,18 @@ LineSegment = namedtuple('Line', ['start', 'end', 'axis'])
 
 kinect_factory_calibration = np.array([5.2161910696979987e+02, 0., 3.1755491910920682e+02,
                                        0., 5.2132946256749767e+02, 2.5921654718027673e+02,
-                                       0., 0., 1.])
+                                       0., 0., 1.], type=np.float32)
 
 
-class GroundTruth():
+class GroundTruth:
     """
     A class to generate ground truth to check the accelerometer data accuracy.
     """
+    def __init__(self):
+        self.r1 = None
+        self.r2 = None
+        self.r3 = None
+
     @staticmethod
     def extract_line_segments_from_label_me_xml(xml_file_name):
         """
@@ -62,6 +67,16 @@ class GroundTruth():
         y_diff = Point(line_segment1.start.y - line_segment1.end.y, line_segment2.start.y - line_segment2.end.y)
 
         def determinant(a, b):
+            """
+            Gets the determininant of the two points.
+
+            :param a: The first point.
+            :type a: Point
+            :param b: The second point.
+            :type b: Point
+            :return: The determinant
+            :rtype: float
+            """
             return a.x * b.y - a.y * b.x
 
         div = determinant(x_diff, y_diff)
@@ -100,6 +115,14 @@ class GroundTruth():
             sys.exit("Found {} segment pairs. Should have found 2.".format(len(pairs)))
 
     def attain_vanishing_points_from_line_segment_pairs(self, line_segment_pairs):
+        """
+        Gets the vanishing points from the line segment pairs.
+
+        :param line_segment_pairs: The line segment pairs.
+        :type line_segment_pairs: list[(LineSegment, LineSegment)]
+        :return: The vanishing points.
+        :rtype: list[VanishingPoint]
+        """
         vanishing_points = []
         for line_segment_pair in line_segment_pairs:
             intersection_point = self.attain_line_intersection(line_segment_pair[0], line_segment_pair[1])
@@ -107,8 +130,26 @@ class GroundTruth():
             vanishing_points.append(vanishing_point)
         return vanishing_points
 
+    def obtain_rotation_column(self, vanishing_point):
+        """
+        Extracts the rotation information from the vanishing point and adds it to the object.
+
+        :param vanishing_point: The vanishing point to process.
+        :type vanishing_point: VanishingPoint
+        """
+        vanishing_point_column = np.transpose(np.array([vanishing_point[0], vanishing_point[1], 1.0], type=np.float32))
+        unnormalized_r = np.dot(np.linalg.inv(kinect_factory_calibration), vanishing_point_column)
+        r = unnormalized_r / np.linalg.norm(unnormalized_r)
+        if vanishing_point[2] == 'x':
+            self.r1 = r
+        elif vanishing_point[2] == 'y':
+            self.r2 = r
+        elif vanishing_point[2] == 'z':
+            self.r3 = r
 
     def attain_rotation_matrix_from_label_me_xml(self, xml_file_name):
         line_segments = self.extract_line_segments_from_label_me_xml(xml_file_name=xml_file_name)
         line_segment_pairs = self.attain_line_segment_pairs_from_line_segments(line_segments=line_segments)
         vanishing_points = self.attain_vanishing_points_from_line_segment_pairs(line_segment_pairs=line_segment_pairs)
+        for vanishing_point in vanishing_points:
+            self.obtain_rotation_column(vanishing_point=vanishing_point)
