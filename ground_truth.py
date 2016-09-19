@@ -12,9 +12,9 @@ VanishingPoint = namedtuple('VanishingPoint', ['x', 'y', 'axis'])
 LineSegment = namedtuple('Line', ['start', 'end', 'axis'])
 
 
-kinect_factory_calibration = np.array([5.2161910696979987e+02, 0., 3.1755491910920682e+02,
-                                       0., 5.2132946256749767e+02, 2.5921654718027673e+02,
-                                       0., 0., 1.], type=np.float32)
+kinect_factory_calibration = np.array([[5.2161910696979987e+02, 0., 3.1755491910920682e+02],
+                                       [0., 5.2132946256749767e+02, 2.5921654718027673e+02],
+                                       [0., 0., 1.]], dtype=np.float32)
 
 
 class GroundTruth:
@@ -42,11 +42,11 @@ class GroundTruth:
         for object_entry in root.findall('object'):
             polygon = object_entry.find('polygon')
             points = polygon.findall('pt')
-            if len(points) != 2:
+            if len(points) != 2 or object_entry.find('attributes').text not in ('x', 'y', 'z'):
                 continue
             point0 = Point(x=int(points[0][0].text), y=int(points[0][1].text))
             point1 = Point(x=int(points[1][0].text), y=int(points[1][1].text))
-            axis = object_entry.find('attribute').text
+            axis = object_entry.find('attributes').text
             line_segment = LineSegment(start=point0, end=point1, axis=axis)
             line_segments.append(line_segment)
         return line_segments
@@ -137,7 +137,7 @@ class GroundTruth:
         :param vanishing_point: The vanishing point to process.
         :type vanishing_point: VanishingPoint
         """
-        vanishing_point_column = np.transpose(np.array([vanishing_point[0], vanishing_point[1], 1.0], type=np.float32))
+        vanishing_point_column = np.array([[vanishing_point[0]], [vanishing_point[1]], [1.0]], dtype=np.float32)
         unnormalized_r = np.dot(np.linalg.inv(kinect_factory_calibration), vanishing_point_column)
         r = unnormalized_r / np.linalg.norm(unnormalized_r)
         if vanishing_point[2] == 'x':
@@ -151,12 +151,12 @@ class GroundTruth:
         """
         Given that the other two rotation columns are already calculated, calculate the last one.
         """
-        if not self.r1:
-            self.r1 = np.cross(self.r2, self.r3)
-        elif not self.r2:
-            self.r2 = np.cross(self.r3, self.r1)
-        elif not self.r3:
-            self.r3 = np.cross(self.r1, self.r2)
+        if self.r1 is None:
+            self.r1 = np.cross(self.r2, self.r3, axis=0)
+        elif self.r2 is None:
+            self.r2 = np.cross(self.r3, self.r1, axis=0)
+        elif self.r3 is None:
+            self.r3 = np.cross(self.r1, self.r2, axis=0)
 
     def attain_rotation_matrix_from_label_me_xml(self, xml_file_name):
         """
@@ -173,4 +173,4 @@ class GroundTruth:
         for vanishing_point in vanishing_points:
             self.obtain_rotation_column(vanishing_point=vanishing_point)
         self.obtain_missing_rotation_column()
-        return np.concatenate((self.r1, self.r2, self.r3))
+        return np.concatenate((self.r1, self.r2, self.r3), axis=1)
