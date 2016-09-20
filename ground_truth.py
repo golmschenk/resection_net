@@ -1,6 +1,8 @@
 """
 Code for generating ground truth data to check the accelerometer data accuracy.
 """
+from math import atan2, pi
+
 import numpy as np
 from collections import namedtuple
 from xml.etree import ElementTree
@@ -11,7 +13,6 @@ Point = namedtuple('Point', ['x', 'y'])
 VanishingPoint = namedtuple('VanishingPoint', ['x', 'y', 'axis'])
 LineSegment = namedtuple('Line', ['start', 'end', 'axis'])
 
-
 kinect_factory_calibration = np.array([[5.2161910696979987e+02, 0., 3.1755491910920682e+02],
                                        [0., 5.2132946256749767e+02, 2.5921654718027673e+02],
                                        [0., 0., 1.]], dtype=np.float32)
@@ -21,6 +22,7 @@ class GroundTruth:
     """
     A class to generate ground truth to check the accelerometer data accuracy.
     """
+
     def __init__(self):
         self.r1 = None
         self.r2 = None
@@ -174,3 +176,35 @@ class GroundTruth:
             self.obtain_rotation_column(vanishing_point=vanishing_point)
         self.obtain_missing_rotation_column()
         return np.concatenate((self.r1, self.r2, self.r3), axis=1)
+
+    def pitch(self):
+        """
+        Return the pitch from the current rotation matrix.
+
+        :return: The pitch in radians.
+        :rtype: float
+        """
+        base = atan2(self.r3[1], self.r3[2])
+        # Force directions.
+        if base > pi/2:
+            return base - pi
+        elif base < -pi/2:
+            return base + pi
+        else:
+            return base
+
+    def roll(self):
+        """
+        Return the roll from the current rotation matrix.
+
+        :return: The roll in radians.
+        :rtype: float
+        """
+        base = atan2(self.r2[0], self.r1[0])
+        # Force directions.
+        if base > pi/2:
+            return base - pi
+        elif base < -pi/2:
+            return base + pi
+        else:
+            return base
