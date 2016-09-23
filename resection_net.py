@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import math
 
-from tensorflow.contrib.layers import batch_norm
+from tensorflow.contrib.layers import batch_norm, max_pool2d, fully_connected, flatten
 
 from resection_data import ResectionData
 from gonet.net import Net
@@ -55,7 +55,7 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        inference_op = self.create_deep_with_dropout_inference_op(images)
+        inference_op = self.create_striding_hermes_inference_op(images)
         return tf.identity(inference_op, name='inference_op')
 
     def create_linear_classifier_inference_op(self, images):
@@ -97,6 +97,31 @@ class ResectionNet(Net):
         flat_predicted_labels = tf.matmul(flat_hypothesis, weights) + biases
 
         predicted_labels = tf.reshape(flat_predicted_labels, [-1, 2])
+        return predicted_labels
+
+    def create_striding_hermes_inference_op(self, images):
+        """
+        Performs a forward pass estimating label maps from RGB images using a (shallow) deep convolution net.
+
+        :param images: The RGB images tensor.
+        :type images: tf.Tensor
+        :return: The label maps tensor.
+        :rtype: tf.Tensor
+        """
+        module1_output = self.mercury_module('module1', images, 3, 8, 3)
+        max_pool1_output = max_pool2d(module1_output, kernel_size=3, stride=2, padding='VALID')
+        module2_output = self.mercury_module('module2', max_pool1_output, 10, 20, 10)
+        max_pool2_output = max_pool2d(module2_output, kernel_size=3, stride=2, padding='VALID')
+        module3_output = self.mercury_module('module3', max_pool2_output, 20, 40, 20)
+        max_pool3_output = max_pool2d(module3_output, kernel_size=3, stride=2, padding='VALID')
+        module4_output = self.mercury_module('module4', max_pool3_output, 30, 60, 30)
+        max_pool4_output = max_pool2d(module4_output, kernel_size=3, stride=2, padding='VALID')
+        module5_output = self.mercury_module('module5', max_pool4_output, 50, 100, 50, dropout_on=True)
+        max_pool5_output = max_pool2d(module5_output, kernel_size=3, stride=2, padding='VALID')
+        module6_output = self.mercury_module('module6', max_pool5_output, 75, 150, 75, dropout_on=True)
+        max_pool6_output = max_pool2d(module6_output, kernel_size=3, stride=2, padding='VALID')
+        predicted_labels = fully_connected(flatten(max_pool6_output), 2, activation_fn=leaky_relu)
+
         return predicted_labels
 
     def create_deep_inference_op(self, images):
