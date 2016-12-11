@@ -105,7 +105,7 @@ class ResectionData(Data):
         :return: The processed image and label.
         :rtype: (tf.Tensor, tf.Tensor)
         """
-        image = tf.image.resize_images(image, self.image_height, self.image_width)
+        image = tf.image.resize_images(image, [self.image_height, self.image_width])
         label = tf.reshape(label, [self.label_height]) + 1.0
         return image, label
 
