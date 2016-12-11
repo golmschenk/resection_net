@@ -8,22 +8,15 @@ import tensorflow as tf
 
 from gonet.data import Data
 
+from settings import Settings
+
 
 class ResectionData(Data):
     """
     A class for managing the resectioning data.
     """
     def __init__(self):
-        super().__init__()
-
-        self.image_height = 464
-        self.image_width = 624
-
-        self.label_height = 2
-        self.label_width = 1
-
-        self.import_directory = 'data/import'
-        self.data_directory = 'data'
+        super().__init__(settings=Settings())
 
     def import_mat_file(self, mat_path):
         """
@@ -44,7 +37,7 @@ class ResectionData(Data):
             gravity_vectors = np.multiply(acceleration_vectors, -1)  # The acceleration is in the up direction.
             labels = np.zeros((len(gravity_vectors), 2), dtype=np.float32)
             for index, gravity_vector in enumerate(gravity_vectors):
-                normalized_gravity_vector = tuple(self.normalize_vector(gravity_vector))
+                normalized_gravity_vector = self.normalize_vector(gravity_vector)
                 labels[index][0] = self.attain_pitch_from_gravity_vector(normalized_gravity_vector)
                 labels[index][1] = self.attain_roll_from_gravity_vector(normalized_gravity_vector)
             self.images = images
@@ -56,7 +49,7 @@ class ResectionData(Data):
         Determines the pitch angle given the normalized gravity vector.
 
         :param gravity_vector: The normalized gravity vector.
-        :type gravity_vector: (int, int, int)
+        :type gravity_vector: list[int]
         :return: The pitch angle.
         :rtype: float
         """
@@ -81,7 +74,7 @@ class ResectionData(Data):
         Determines the roll angle given the normalized gravity vector.
 
         :param gravity_vector: The normalized gravity vector.
-        :type gravity_vector: (int, int, int)
+        :type gravity_vector: list[int]
         :return: The roll angle.
         :rtype: float
         """
@@ -105,8 +98,8 @@ class ResectionData(Data):
         :return: The processed image and label.
         :rtype: (tf.Tensor, tf.Tensor)
         """
-        image = tf.image.resize_images(image, [self.image_height, self.image_width])
-        label = tf.reshape(label, [self.label_height]) + 1.0
+        image = tf.image.resize_images(image, [self.settings.image_height, self.settings.image_width])
+        label = tf.reshape(label, [self.settings.label_height]) + 1.0
         return image, label
 
     @staticmethod

@@ -10,7 +10,9 @@ from tensorflow.contrib.layers import batch_norm, max_pool2d, fully_connected, f
 from resection_data import ResectionData
 from gonet.net import Net
 from gonet.interface import Interface
-from gonet.convenience import weight_variable, bias_variable, leaky_relu, conv2d, size_from_stride_two, conv_layer
+from gonet.convenience import weight_variable, bias_variable, leaky_relu, size_from_stride_two, conv_layer
+
+from settings import Settings
 
 
 class ResectionNet(Net):
@@ -19,16 +21,12 @@ class ResectionNet(Net):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(settings=Settings(), *args, **kwargs)
 
         self.data = ResectionData()
-        self.epoch_limit = None
+
         self.step_summary_name = "Loss"
         self.image_summary_on = False
-
-        self.batch_size = 5
-        self.initial_learning_rate = 0.00001
-
         self.test_labels = None
 
     def create_loss_tensor(self, predicted_labels, labels):
@@ -67,9 +65,9 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.data.image_height * self.data.image_width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.data.image_depth])
-        weights = weight_variable([pixel_count * self.data.image_depth, 2], stddev=0.001)
+        pixel_count = self.settings.image_height * self.settings.image_width
+        flat_images = tf.reshape(images, [-1, pixel_count * self.settings.image_depth])
+        weights = weight_variable([pixel_count * self.settings.image_depth, 2], stddev=0.001)
         biases = bias_variable([2], constant=0.001)
 
         flat_predicted_labels = tf.matmul(flat_images, weights) + biases
@@ -85,9 +83,9 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.data.image_height * self.data.image_width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.data.image_depth])
-        weights = weight_variable([pixel_count * self.data.image_depth, 64], stddev=0.001)
+        pixel_count = self.settings.image_height * self.settings.image_width
+        flat_images = tf.reshape(images, [-1, pixel_count * self.settings.image_depth])
+        weights = weight_variable([pixel_count * self.settings.image_depth, 64], stddev=0.001)
         biases = bias_variable([64], constant=0.001)
 
         flat_hypothesis = tf.matmul(flat_images, weights) + biases
@@ -141,8 +139,8 @@ class ResectionNet(Net):
         h_conv = conv_layer('conv6', h_conv, 256, 256, conv_height=10, conv_width=10, strides=(1, 2, 2, 1))
 
         with tf.name_scope('fc1'):
-            fc0_size = size_from_stride_two(self.data.image_height, iterations=6) * size_from_stride_two(
-                self.data.image_width, iterations=6) * 256
+            fc0_size = size_from_stride_two(self.settings.image_height, iterations=6) * size_from_stride_two(
+                self.settings.image_width, iterations=6) * 256
             fc1_size = 2
             h_fc = tf.reshape(h_conv, [-1, fc0_size])
             w_fc = weight_variable([fc0_size, fc1_size])
@@ -175,12 +173,13 @@ class ResectionNet(Net):
         h_conv = conv_layer('conv5', h_conv, 128, 256, strides=(1, 2, 2, 1), histogram_summary=True)
         h_conv = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
         h_conv = batch_norm(h_conv)
-        h_conv = conv_layer('conv6', h_conv, 256, 256, conv_height=10, conv_width=10, strides=(1, 2, 2, 1), histogram_summary=True)
+        h_conv = conv_layer('conv6', h_conv, 256, 256, conv_height=10, conv_width=10, strides=(1, 2, 2, 1),
+                            histogram_summary=True)
         h_conv_drop = tf.nn.dropout(h_conv, self.dropout_keep_probability_tensor)
 
         with tf.name_scope('fc1'):
-            fc0_size = size_from_stride_two(self.data.image_height, iterations=6) * size_from_stride_two(
-                self.data.image_width, iterations=6) * 256
+            fc0_size = size_from_stride_two(self.settings.image_height, iterations=6) * size_from_stride_two(
+                self.settings.image_width, iterations=6) * 256
             fc1_size = 2
             h_fc = tf.reshape(h_conv_drop, [-1, fc0_size])
             w_fc = weight_variable([fc0_size, fc1_size])
@@ -209,7 +208,7 @@ class ResectionNet(Net):
         )
         self.test_labels = np.concatenate((self.test_labels, labels_batch))
         self.predicted_test_labels = np.concatenate((self.predicted_test_labels, predicted_labels_batch))
-        print('{image_count} images processed.'.format(image_count=(self.step + 1) * self.batch_size))
+        print('{image_count} images processed.'.format(image_count=(self.global_step + 1) * self.settings.batch_size))
 
     def test_run_postloop(self):
         """
@@ -228,7 +227,7 @@ class ResectionNet(Net):
         axis_mean_difference = np.mean(absolute_difference, axis=0)
         axis_mean_squared_difference = np.mean(squared_difference, axis=0)
         axis_labels_standard_deviation = np.std(self.test_labels, axis=0)
-        axis_mean_absolute_devation = np.mean(absolute_deviation, axis=0)
+        axis_mean_absolute_deviation = np.mean(absolute_deviation, axis=0)
 
         print('Radians')
         print('Combined mean absolute difference: {}'.format(mean_difference))
@@ -243,8 +242,8 @@ class ResectionNet(Net):
         print('Ground truth pitch standard deviation: {}'.format(axis_labels_standard_deviation[0]))
         print('Ground truth roll standard deviation: {}'.format(axis_labels_standard_deviation[1]))
         print('Ground truth combined mean absolute deviation: {}'.format(np.mean(absolute_deviation)))
-        print('Ground truth pitch mean absolute deviation: {}'.format(axis_mean_absolute_devation[0]))
-        print('Ground truth roll mean absolute deviation: {}'.format(axis_mean_absolute_devation[1]))
+        print('Ground truth pitch mean absolute deviation: {}'.format(axis_mean_absolute_deviation[0]))
+        print('Ground truth roll mean absolute deviation: {}'.format(axis_mean_absolute_deviation[1]))
         print('Degrees')
         print('Ground truth pitch mean: {}'.format(math.degrees(axis_mean_labels[0])))
         print('Ground truth roll mean: {}'.format(math.degrees(axis_mean_labels[1])))
@@ -256,9 +255,9 @@ class ResectionNet(Net):
         print('Roll mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[1])))
         print('Ground truth combined mean absolute deviation: {}'.format(math.degrees(np.mean(absolute_deviation))))
         print('Combined mean absolute difference: {}'.format(math.degrees(mean_difference)))
-        print('Ground truth pitch mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_devation[0])))
+        print('Ground truth pitch mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_deviation[0])))
         print('Pitch mean absolute difference: {}'.format(math.degrees(axis_mean_difference[0])))
-        print('Ground truth roll mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_devation[1])))
+        print('Ground truth roll mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_deviation[1])))
         print('Roll mean absolute difference: {}'.format(math.degrees(axis_mean_difference[1])))
 
 
