@@ -8,6 +8,7 @@ import tensorflow as tf
 
 from gonet.data import Data
 
+from ground_truth import GroundTruth
 from settings import Settings
 
 
@@ -114,6 +115,23 @@ class ResectionData(Data):
         :rtype: tf.Tensor
         """
         return tf.mul(label, [1.0, -1.0])
+
+    @staticmethod
+    def extract_pitch_and_roll_from_sun_rgbd_extrinsics_text_file(file_path):
+        """
+        Gets the pitch and roll from a SUN RGB-D extrinsics file.
+
+        :param file_path: The path to the extrinsics file.
+        :type file_path: str
+        :return: The pitch and the roll.
+        :rtype: (float, float)
+        """
+        extrinsics_array = np.transpose(np.loadtxt(file_path, dtype=np.float32))
+        ground_truth = GroundTruth()
+        ground_truth.r1 = extrinsics_array[0]
+        ground_truth.r2 = extrinsics_array[1]
+        ground_truth.r3 = extrinsics_array[2]
+        return -ground_truth.pitch(), -ground_truth.roll()
 
 
 if __name__ == '__main__':
