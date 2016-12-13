@@ -163,6 +163,11 @@ class ResectionData(Data):
                                                   None)
                                 e_name = next(glob.iglob(os.path.join(image_directory_path, 'extrinsics', '*.txt')),
                                                   None)
+                                if image_name is None:
+                                    image_name = next(
+                                        glob.iglob(os.path.join(image_directory_path, 'image', '*.jpg')),
+                                        None
+                                    )
                                 if image_name is None or e_name is None:
                                     print('{} is missing a piece.'.format(os.path.join(dataset_directory_path,
                                                                                        image_directory)))
