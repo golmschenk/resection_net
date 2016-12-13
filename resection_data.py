@@ -1,10 +1,13 @@
 """
 Code for managing the resectioning data.
 """
+import glob
 from math import pi, acos
 import h5py
 import numpy as np
+import scipy.ndimage
 import tensorflow as tf
+import os
 
 from gonet.data import Data
 
@@ -18,6 +21,8 @@ class ResectionData(Data):
     """
     def __init__(self):
         super().__init__(settings=Settings())
+
+        self.dataset = 'sun_rgbd'  # sun_rgbd or nyu_depth_v2
 
     def import_mat_file(self, mat_path):
         """
@@ -132,6 +137,43 @@ class ResectionData(Data):
         ground_truth.r2 = extrinsics_array[1]
         ground_truth.r3 = extrinsics_array[2]
         return -ground_truth.pitch(), -ground_truth.roll()
+
+    def generate_all_tfrecords(self):
+        if self.dataset == 'sun_rgbd':
+            return self.sun_rgbd_generate_all_tfrecords()
+        else:
+            return super().generate_all_tfrecords()
+
+    def sun_rgbd_generate_all_tfrecords(self):
+        """
+        Creates the TFRecords for the SUN RGB-D data. (Warning, really hacky)
+        """
+        for device_directory in os.listdir(self.settings.import_directory):
+            device_directory_path = os.path.join(self.settings.import_directory, device_directory)
+            if os.path.isdir(device_directory_path):
+                for dataset_directory in os.listdir(device_directory_path):
+                    dataset_directory_path = os.path.join(device_directory_path, dataset_directory)
+                    if os.path.isdir(dataset_directory_path):
+                        images = []
+                        labels = []
+                        for image_directory in os.listdir(dataset_directory_path):
+                            image_directory_path = os.path.join(dataset_directory_path, image_directory)
+                            if os.path.isdir(image_directory_path):
+                                image_name = next(glob.iglob(os.path.join(image_directory_path, 'fullres', '*.jpg')),
+                                                  None)
+                                e_name = next(glob.iglob(os.path.join(image_directory_path, 'extrinsics', '*.txt')),
+                                                  None)
+                                if image_name is None or e_name is None:
+                                    print('{} is missing a piece.'.format(os.path.join(dataset_directory_path,
+                                                                                       image_directory)))
+                                    continue
+                                images.append(scipy.ndimage.imread(image_name))
+                                pitch, roll = self.extract_pitch_and_roll_from_sun_rgbd_extrinsics_text_file(e_name)
+                                labels.append(np.array([pitch, roll], dtype=np.float32))
+                        self.images = np.stack(images)
+                        self.labels = np.stack(labels)
+                        self.data_name = 'sunrgbd_{}_{}'.format(device_directory, dataset_directory)
+                        self.convert_to_tfrecords()
 
 
 if __name__ == '__main__':

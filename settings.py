@@ -24,3 +24,5 @@ class Settings(GoSettings):
         # The below settings are ResectionNet specific and should not be changed.
         self.label_height = 2
         self.label_width = 1
+
+        self.import_directory = '/Users/golmschenk/SUNRGBD'
