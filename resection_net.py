@@ -99,7 +99,7 @@ class ResectionNet(Net):
 
     def create_striding_hermes_inference_op(self, images):
         """
-        Performs a forward pass estimating label maps from RGB images using a (shallow) deep convolution net.
+        Performs a forward pass estimating label maps from RGB images using the mercury modules.
 
         :param images: The RGB images tensor.
         :type images: tf.Tensor
@@ -118,8 +118,31 @@ class ResectionNet(Net):
         max_pool5_output = max_pool2d(module5_output, kernel_size=3, stride=2, padding='VALID')
         module6_output = self.mercury_module('module6', max_pool5_output, 75, 150, 75, dropout_on=True)
         max_pool6_output = max_pool2d(module6_output, kernel_size=3, stride=2, padding='VALID')
-        predicted_labels = fully_connected(flatten(max_pool6_output), 2, activation_fn=leaky_relu)
+        predicted_labels = fully_connected(flatten(max_pool6_output), 2, activation_fn=None)
+        return predicted_labels
 
+    def create_striding_gaea_inference_op(self, images):
+        """
+        Performs a forward pass estimating label maps from RGB images using the terra modules
+
+        :param images: The RGB images tensor.
+        :type images: tf.Tensor
+        :return: The label maps tensor.
+        :rtype: tf.Tensor
+        """
+        module1_output = self.terra_module('module1', images, 16)
+        max_pool1_output = max_pool2d(module1_output, kernel_size=3, stride=2, padding='VALID')
+        module2_output = self.terra_module('module1', max_pool1_output, 32)
+        max_pool2_output = max_pool2d(module2_output, kernel_size=3, stride=2, padding='VALID')
+        module3_output = self.terra_module('module1', max_pool2_output, 64)
+        max_pool3_output = max_pool2d(module3_output, kernel_size=3, stride=2, padding='VALID')
+        module4_output = self.terra_module('module1', max_pool3_output, 128, dropout_on=True)
+        max_pool4_output = max_pool2d(module4_output, kernel_size=3, stride=2, padding='VALID')
+        module5_output = self.terra_module('module1', max_pool4_output, 256, dropout_on=True)
+        max_pool5_output = max_pool2d(module5_output, kernel_size=3, stride=2, padding='VALID')
+        module6_output = self.terra_module('module1', max_pool5_output, 256, dropout_on=True)
+        max_pool6_output = max_pool2d(module6_output, kernel_size=3, stride=2, padding='VALID')
+        predicted_labels = fully_connected(flatten(max_pool6_output), 2, activation_fn=None)
         return predicted_labels
 
     def create_deep_inference_op(self, images):

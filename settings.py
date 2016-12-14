@@ -25,4 +25,5 @@ class Settings(GoSettings):
         self.label_height = 2
         self.label_width = 1
 
-        self.import_directory = '/Users/golmschenk/SUNRGBD'
+        self.train_patterns = '*'
+        self.validation_patterns = '*'
