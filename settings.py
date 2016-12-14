@@ -25,5 +25,5 @@ class Settings(GoSettings):
         self.label_height = 2
         self.label_width = 1
 
-        self.train_patterns = '*'
-        self.validation_patterns = '*'
+        self.train_patterns = '^nyudepth_office_0'
+        self.validation_patterns = '^(?!nyudepth_office_0)'
