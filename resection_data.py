@@ -2,12 +2,16 @@
 Code for managing the resectioning data.
 """
 import glob
+import json
+import random
 from math import pi, acos
 import h5py
+import itertools
 import numpy as np
 import scipy.ndimage
 import tensorflow as tf
 import os
+import re
 
 from gonet.data import Data
 
@@ -19,6 +23,7 @@ class ResectionData(Data):
     """
     A class for managing the resectioning data.
     """
+
     def __init__(self):
         super().__init__(settings=Settings())
 
@@ -60,7 +65,7 @@ class ResectionData(Data):
         :rtype: float
         """
         z = gravity_vector[2]
-        pitch = -(pi/2 - acos(z))
+        pitch = -(pi / 2 - acos(z))
         return pitch
 
     @staticmethod
@@ -162,7 +167,7 @@ class ResectionData(Data):
                                 image_name = next(glob.iglob(os.path.join(image_directory_path, 'fullres', '*.jpg')),
                                                   None)
                                 e_name = next(glob.iglob(os.path.join(image_directory_path, 'extrinsics', '*.txt')),
-                                                  None)
+                                              None)
                                 if image_name is None:
                                     image_name = next(
                                         glob.iglob(os.path.join(image_directory_path, 'image', '*.jpg')),
@@ -179,6 +184,28 @@ class ResectionData(Data):
                         self.labels = np.stack(labels)
                         self.data_name = 'sunrgbd_{}_{}'.format(device_directory, dataset_directory)
                         self.convert_to_tfrecords()
+
+    def generate_dataset_json(self, data_prefix_pattern, data_postfix_pattern, validation_size_percentage,
+                              test_size_percentage):
+        file_names = [file_name for file_name in os.listdir(self.settings.data_directory) if
+                      os.path.isfile(os.path.join(self.settings.data_directory, file_name))]
+        prefixed_names = [file_name for file_name in file_names if re.search(data_prefix_pattern, file_name)]
+        groups = list(map(lambda groups: list(groups[1]),
+                     itertools.groupby(sorted(prefixed_names),
+                                       lambda name: re.sub('{}$'.format(data_postfix_pattern), '', name))))
+        random.shuffle(groups)
+        total_size = len(groups)
+        validation_size = int(total_size * validation_size_percentage)
+        test_size = int(total_size * test_size_percentage)
+        validation_groups, test_groups, train_groups = (groups[:validation_size],
+                                                        groups[validation_size:validation_size + test_size],
+                                                        groups[validation_size + test_size:])
+        flatten = lambda l: [item for sublist in l for item in sublist]
+        dataset_dictionary = {'train': flatten(train_groups),
+                              'validation': flatten(validation_groups),
+                              'test': flatten(test_groups)}
+        with open('datasets.json', 'w') as json_file:
+            json.dump(dataset_dictionary, json_file)
 
 
 if __name__ == '__main__':
