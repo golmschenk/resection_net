@@ -27,7 +27,7 @@ class ResectionData(Data):
     def __init__(self):
         super().__init__(settings=Settings())
 
-        self.dataset = 'sun_rgbd'  # sun_rgbd or nyu_depth_v2
+        self.import_dataset_name = 'nyu_depth_v2'  # sun_rgbd or nyu_depth_v2
 
     def import_mat_file(self, mat_path):
         """
@@ -144,7 +144,7 @@ class ResectionData(Data):
         return -ground_truth.pitch(), -ground_truth.roll()
 
     def generate_all_tfrecords(self):
-        if self.dataset == 'sun_rgbd':
+        if self.import_dataset_name == 'sun_rgbd':
             return self.sun_rgbd_generate_all_tfrecords()
         else:
             return super().generate_all_tfrecords()
