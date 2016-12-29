@@ -25,5 +25,4 @@ class Settings(GoSettings):
         self.label_height = 2
         self.label_width = 1
 
-        self.train_pattern = '^nyudepth_(?!office_0)'
-        self.validation_pattern = '^nyudepth_office_0'
+        self.datasets_json = 'nyudepth_datasets.json'
