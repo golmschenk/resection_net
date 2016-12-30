@@ -110,7 +110,7 @@ class ResectionData(Data):
         :rtype: (tf.Tensor, tf.Tensor)
         """
         image = tf.image.resize_images(image, [self.settings.image_height, self.settings.image_width])
-        label = tf.reshape(label, [self.settings.label_height]) + 1.0
+        label = tf.reshape(label, [self.settings.label_height])
         return image, label
 
     @staticmethod

@@ -247,10 +247,6 @@ class ResectionNet(Net):
         """
         The code that will be run once the inference test loop is finished. Mostly for saving data or statistics.
         """
-        # Take into account that 1 was added to all label values.
-        self.predicted_test_labels -= 1.0
-        self.test_labels -= 1.0
-
         absolute_difference = np.abs(self.predicted_test_labels - self.test_labels)
         squared_difference = np.square(absolute_difference)
         axis_mean_labels = np.mean(self.test_labels, axis=0)
