@@ -40,18 +40,18 @@ class ResectionNet(Net):
         :return: The loss tensor.
         :rtype: tf.Tensor
         """
-        difference = predicted_labels - labels
-        squared_difference = tf.square(difference)
-        pitch_difference = difference[:, 0]
-        roll_difference = difference[:, 1]
+        absolute_difference = tf.abs(predicted_labels - labels)
+        squared_difference = tf.square(absolute_difference)
+        absolute_pitch_difference = absolute_difference[:, 0]
+        absolute_roll_difference = absolute_difference[:, 1]
         squared_pitch_difference = squared_difference[:, 0]
         squared_roll_difference = squared_difference[:, 1]
-        tf.scalar_summary("Average difference", tf.reduce_mean(difference))
-        tf.scalar_summary("Average pitch difference", tf.reduce_mean(pitch_difference))
-        tf.scalar_summary("Average roll difference", tf.reduce_mean(roll_difference))
+        tf.scalar_summary("Average absolute difference", tf.reduce_mean(absolute_difference))
+        tf.scalar_summary("Pitch average absolute difference", tf.reduce_mean(absolute_pitch_difference))
+        tf.scalar_summary("Roll average absolute difference", tf.reduce_mean(absolute_roll_difference))
         tf.scalar_summary("Average squared difference", tf.reduce_mean(squared_difference))
-        tf.scalar_summary("Average squared pitch difference", tf.reduce_mean(squared_pitch_difference))
-        tf.scalar_summary("Average squared roll difference", tf.reduce_mean(squared_roll_difference))
+        tf.scalar_summary("Pitch average squared difference", tf.reduce_mean(squared_pitch_difference))
+        tf.scalar_summary("Roll average squared difference", tf.reduce_mean(squared_roll_difference))
         return squared_difference
 
     def create_inference_op(self, images):
