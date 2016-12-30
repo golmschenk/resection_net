@@ -40,8 +40,18 @@ class ResectionNet(Net):
         :return: The loss tensor.
         :rtype: tf.Tensor
         """
-        squared_difference = tf.square(predicted_labels - labels)
-        tf.scalar_summary("Worst squared difference", tf.reduce_max(squared_difference))
+        difference = predicted_labels - labels
+        squared_difference = tf.square(difference)
+        pitch_difference = difference[:, 0]
+        roll_difference = difference[:, 1]
+        squared_pitch_difference = squared_difference[:, 0]
+        squared_roll_difference = squared_difference[:, 1]
+        tf.scalar_summary("Average difference", tf.reduce_mean(difference))
+        tf.scalar_summary("Average pitch difference", tf.reduce_mean(pitch_difference))
+        tf.scalar_summary("Average roll difference", tf.reduce_mean(roll_difference))
+        tf.scalar_summary("Average squared difference", tf.reduce_mean(squared_difference))
+        tf.scalar_summary("Average squared pitch difference", tf.reduce_mean(squared_pitch_difference))
+        tf.scalar_summary("Average squared roll difference", tf.reduce_mean(squared_roll_difference))
         return squared_difference
 
     def create_inference_op(self, images):
