@@ -116,19 +116,15 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        module1_output = self.mercury_module('module1', images, 3, 8, 3)
-        max_pool1_output = max_pool2d(module1_output, kernel_size=3, stride=2, padding='VALID')
-        module2_output = self.mercury_module('module2', max_pool1_output, 10, 20, 10)
-        max_pool2_output = max_pool2d(module2_output, kernel_size=3, stride=2, padding='VALID')
-        module3_output = self.mercury_module('module3', max_pool2_output, 20, 40, 20)
-        max_pool3_output = max_pool2d(module3_output, kernel_size=3, stride=2, padding='VALID')
-        module4_output = self.mercury_module('module4', max_pool3_output, 30, 60, 30)
-        max_pool4_output = max_pool2d(module4_output, kernel_size=3, stride=2, padding='VALID')
-        module5_output = self.mercury_module('module5', max_pool4_output, 50, 100, 50, dropout_on=True)
-        max_pool5_output = max_pool2d(module5_output, kernel_size=3, stride=2, padding='VALID')
-        module6_output = self.mercury_module('module6', max_pool5_output, 75, 150, 75, dropout_on=True)
-        max_pool6_output = max_pool2d(module6_output, kernel_size=3, stride=2, padding='VALID')
-        predicted_labels = fully_connected(flatten(max_pool6_output), 2, activation_fn=None)
+        module1_output = self.mercury_module('module1', images, 3, 6, 3, strided_max_pool_on=True)
+        module2_output = self.mercury_module('module2', module1_output, 8, 12, 8, strided_max_pool_on=True)
+        module3_output = self.mercury_module('module3', module2_output, 16, 24, 16, strided_max_pool_on=True)
+        module4_output = self.mercury_module('module4', module3_output, 25, 50, 25, strided_max_pool_on=True)
+        module5_output = self.mercury_module('module5', module4_output, 50, 100, 50, strided_max_pool_on=True,
+                                             dropout_on=True)
+        module6_output = self.mercury_module('module6', module5_output, 75, 150, 75, strided_max_pool_on=True,
+                                             dropout_on=True)
+        predicted_labels = fully_connected(flatten(module6_output), 2, activation_fn=None)
         return predicted_labels
 
     def create_striding_gaea_inference_op(self, images):
@@ -140,19 +136,13 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        module1_output = self.terra_module('module1', images, 16)
-        max_pool1_output = max_pool2d(module1_output, kernel_size=3, stride=2, padding='VALID')
-        module2_output = self.terra_module('module1', max_pool1_output, 32)
-        max_pool2_output = max_pool2d(module2_output, kernel_size=3, stride=2, padding='VALID')
-        module3_output = self.terra_module('module1', max_pool2_output, 64)
-        max_pool3_output = max_pool2d(module3_output, kernel_size=3, stride=2, padding='VALID')
-        module4_output = self.terra_module('module1', max_pool3_output, 128, dropout_on=True)
-        max_pool4_output = max_pool2d(module4_output, kernel_size=3, stride=2, padding='VALID')
-        module5_output = self.terra_module('module1', max_pool4_output, 256, dropout_on=True)
-        max_pool5_output = max_pool2d(module5_output, kernel_size=3, stride=2, padding='VALID')
-        module6_output = self.terra_module('module1', max_pool5_output, 256, dropout_on=True)
-        max_pool6_output = max_pool2d(module6_output, kernel_size=3, stride=2, padding='VALID')
-        predicted_labels = fully_connected(flatten(max_pool6_output), 2, activation_fn=None)
+        module1_output = self.terra_module('module1', images, 16, strided_max_pool_on=True)
+        module2_output = self.terra_module('module2', module1_output, 32, strided_max_pool_on=True)
+        module3_output = self.terra_module('module3', module2_output, 64, strided_max_pool_on=True)
+        module4_output = self.terra_module('module4', module3_output, 128, strided_max_pool_on=True)
+        module5_output = self.terra_module('module5', module4_output, 256, strided_max_pool_on=True, dropout_on=True)
+        module6_output = self.terra_module('module6', module5_output, 256, strided_max_pool_on=True, dropout_on=True)
+        predicted_labels = fully_connected(flatten(module6_output), 2, activation_fn=None)
         return predicted_labels
 
     def create_deep_inference_op(self, images):

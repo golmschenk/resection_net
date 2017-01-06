@@ -56,4 +56,4 @@ class Display:
 
 if __name__ == '__main__':
     display = Display()
-    display.compare_dataset_labels('/Users/golmschenk/Code/resectionnet/data/nyudepth_micro.tfrecords', '/Users/golmschenk/Code/resectionnet/data/nyudepth_micro.tfrecords')
+    display.compare_dataset_labels('nyu_depth_v2_labeled.tfrecords', 'sunrgbd_kv1_NYUdata.tfrecords')
