@@ -3,10 +3,10 @@ Code related to the ResectionNet.
 """
 import numpy as np
 import tensorflow as tf
-import math
 
 from tensorflow.contrib.layers import batch_norm, fully_connected, flatten
 
+from display import Display
 from resection_data import ResectionData
 from gonet.net import Net
 from gonet.interface import Interface
@@ -238,47 +238,7 @@ class ResectionNet(Net):
         """
         The code that will be run once the inference test loop is finished. Mostly for saving data or statistics.
         """
-        absolute_difference = np.abs(self.predicted_test_labels - self.test_labels)
-        squared_difference = np.square(absolute_difference)
-        axis_mean_labels = np.mean(self.test_labels, axis=0)
-        absolute_deviation = np.abs(self.test_labels - axis_mean_labels)
-        mean_difference = np.mean(absolute_difference)
-        mean_squared_difference = np.mean(squared_difference)
-        axis_mean_difference = np.mean(absolute_difference, axis=0)
-        axis_mean_squared_difference = np.mean(squared_difference, axis=0)
-        axis_labels_standard_deviation = np.std(self.test_labels, axis=0)
-        axis_mean_absolute_deviation = np.mean(absolute_deviation, axis=0)
-
-        print('Radians')
-        print('Combined mean absolute difference: {}'.format(mean_difference))
-        print('Combined mean squared difference: {}'.format(mean_squared_difference))
-        print('Pitch mean absolute difference: {}'.format(axis_mean_difference[0]))
-        print('Pitch mean squared difference: {}'.format(axis_mean_squared_difference[0]))
-        print('Roll mean absolute difference: {}'.format(axis_mean_difference[1]))
-        print('Roll mean squared difference: {}'.format(axis_mean_squared_difference[1]))
-        print('Ground truth pitch mean: {}'.format(axis_mean_labels[0]))
-        print('Ground truth roll mean: {}'.format(axis_mean_labels[1]))
-        print('Ground truth combined standard deviation: {}'.format(np.std(self.test_labels)))
-        print('Ground truth pitch standard deviation: {}'.format(axis_labels_standard_deviation[0]))
-        print('Ground truth roll standard deviation: {}'.format(axis_labels_standard_deviation[1]))
-        print('Ground truth combined mean absolute deviation: {}'.format(np.mean(absolute_deviation)))
-        print('Ground truth pitch mean absolute deviation: {}'.format(axis_mean_absolute_deviation[0]))
-        print('Ground truth roll mean absolute deviation: {}'.format(axis_mean_absolute_deviation[1]))
-        print('Degrees')
-        print('Ground truth pitch mean: {}'.format(math.degrees(axis_mean_labels[0])))
-        print('Ground truth roll mean: {}'.format(math.degrees(axis_mean_labels[1])))
-        print('Ground truth combined standard deviation: {}'.format(math.degrees(np.std(self.test_labels))))
-        print('Combined mean squared difference: {}'.format(math.degrees(mean_squared_difference)))
-        print('Ground truth pitch standard deviation: {}'.format(math.degrees(axis_labels_standard_deviation[0])))
-        print('Pitch mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[0])))
-        print('Ground truth roll standard deviation: {}'.format(math.degrees(axis_labels_standard_deviation[1])))
-        print('Roll mean squared difference: {}'.format(math.degrees(axis_mean_squared_difference[1])))
-        print('Ground truth combined mean absolute deviation: {}'.format(math.degrees(np.mean(absolute_deviation))))
-        print('Combined mean absolute difference: {}'.format(math.degrees(mean_difference)))
-        print('Ground truth pitch mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_deviation[0])))
-        print('Pitch mean absolute difference: {}'.format(math.degrees(axis_mean_difference[0])))
-        print('Ground truth roll mean absolute deviation: {}'.format(math.degrees(axis_mean_absolute_deviation[1])))
-        print('Roll mean absolute difference: {}'.format(math.degrees(axis_mean_difference[1])))
+        Display().test_run_statistics(self.predicted_test_labels, self.test_labels)
 
 
 if __name__ == '__main__':
