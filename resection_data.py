@@ -24,8 +24,10 @@ class ResectionData(Data):
     A class for managing the resectioning data.
     """
 
-    def __init__(self):
-        super().__init__(settings=Settings())
+    def __init__(self, settings=None):
+        if not settings:
+            settings = Settings()
+        super().__init__(settings=settings)
 
         self.import_dataset_name = 'nyu_depth_v2'  # sun_rgbd or nyu_depth_v2
 

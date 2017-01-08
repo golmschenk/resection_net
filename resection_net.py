@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import math
 
-from tensorflow.contrib.layers import batch_norm, max_pool2d, fully_connected, flatten
+from tensorflow.contrib.layers import batch_norm, fully_connected, flatten
 
 from resection_data import ResectionData
 from gonet.net import Net
@@ -21,9 +21,10 @@ class ResectionNet(Net):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(settings=Settings(), *args, **kwargs)
+        settings = Settings()
+        super().__init__(settings=settings, *args, **kwargs)
 
-        self.data = ResectionData()
+        self.data = ResectionData(settings=settings)
 
         self.step_summary_name = "Loss"
         self.image_summary_on = False
