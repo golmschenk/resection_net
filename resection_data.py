@@ -189,12 +189,25 @@ class ResectionData(Data):
 
     def generate_dataset_json(self, data_prefix_pattern, data_postfix_pattern, validation_size_percentage,
                               test_size_percentage):
+        """
+        Generates a JSON file containing randomly selected test, training, and validation files in specified
+        proportions.
+
+        :param data_prefix_pattern: The pattern the file names must start with to be considered.
+        :type data_prefix_pattern: str
+        :param data_postfix_pattern: The pattern the file names must end with to be considered.
+        :type data_postfix_pattern: str
+        :param validation_size_percentage: The percentage of the files to be used for the validation set.
+        :type validation_size_percentage: float
+        :param test_size_percentage: The percentage of the files to be used for the test set.
+        :type test_size_percentage: float
+        """
         file_names = [file_name for file_name in os.listdir(self.settings.data_directory) if
                       os.path.isfile(os.path.join(self.settings.data_directory, file_name))]
         prefixed_names = [file_name for file_name in file_names if re.search(data_prefix_pattern, file_name)]
         groups = list(map(lambda groups: list(groups[1]),
-                     itertools.groupby(sorted(prefixed_names),
-                                       lambda name: re.sub('{}$'.format(data_postfix_pattern), '', name))))
+                          itertools.groupby(sorted(prefixed_names),
+                                            lambda name: re.sub('{}$'.format(data_postfix_pattern), '', name))))
         random.shuffle(groups)
         total_size = len(groups)
         validation_size = int(total_size * validation_size_percentage)
@@ -202,7 +215,18 @@ class ResectionData(Data):
         validation_groups, test_groups, train_groups = (groups[:validation_size],
                                                         groups[validation_size:validation_size + test_size],
                                                         groups[validation_size + test_size:])
-        flatten = lambda l: [item for sublist in l for item in sublist]
+
+        def flatten(list_of_lists):
+            """
+            Flattens a list of lists.
+
+            :param list_of_lists: The list to flatten.
+            :type list_of_lists: list[list[]]
+            :return: The flattened list.
+            :rtype: list[]
+            """
+            return [item for sublist in list_of_lists for item in sublist]
+
         dataset_dictionary = {'train': flatten(train_groups),
                               'validation': flatten(validation_groups),
                               'test': flatten(test_groups)}
