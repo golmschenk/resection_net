@@ -205,7 +205,7 @@ class ResectionData(Data):
         file_names = [file_name for file_name in os.listdir(self.settings.data_directory) if
                       os.path.isfile(os.path.join(self.settings.data_directory, file_name))]
         prefixed_names = [file_name for file_name in file_names if re.search(data_prefix_pattern, file_name)]
-        groups = list(map(lambda groups: list(groups[1]),
+        groups = list(map(lambda groups_: list(groups_[1]),
                           itertools.groupby(sorted(prefixed_names),
                                             lambda name: re.sub('{}$'.format(data_postfix_pattern), '', name))))
         random.shuffle(groups)
@@ -216,20 +216,9 @@ class ResectionData(Data):
                                                         groups[validation_size:validation_size + test_size],
                                                         groups[validation_size + test_size:])
 
-        def flatten(list_of_lists):
-            """
-            Flattens a list of lists.
-
-            :param list_of_lists: The list to flatten.
-            :type list_of_lists: list[list[]]
-            :return: The flattened list.
-            :rtype: list[]
-            """
-            return [item for sublist in list_of_lists for item in sublist]
-
-        dataset_dictionary = {'train': flatten(train_groups),
-                              'validation': flatten(validation_groups),
-                              'test': flatten(test_groups)}
+        dataset_dictionary = {'train': [item for sublist in train_groups for item in sublist],
+                              'validation': [item for sublist in validation_groups for item in sublist],
+                              'test': [item for sublist in test_groups for item in sublist]}
         with open('datasets.json', 'w') as json_file:
             json.dump(dataset_dictionary, json_file)
 
