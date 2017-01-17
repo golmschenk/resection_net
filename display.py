@@ -3,7 +3,7 @@ Code for displaying results of programs and scripts.
 """
 import math
 import numpy as np
-from gonet.tfrecords_reader import TFRecordsReader
+from gonet.tfrecords_processor import TFRecordsProcessor
 
 
 class Display:
@@ -20,9 +20,9 @@ class Display:
         :param dataset2_path: The path to the second dataset.
         :type dataset2_path: str
         """
-        go_tfrecords_reader = TFRecordsReader()
-        _, labels1 = go_tfrecords_reader.convert_to_numpy(dataset1_path)
-        _, labels2 = go_tfrecords_reader.convert_to_numpy(dataset2_path)
+        go_tfrecords_processor = TFRecordsProcessor()
+        _, labels1 = go_tfrecords_processor.read_to_numpy(dataset1_path)
+        _, labels2 = go_tfrecords_processor.read_to_numpy(dataset2_path)
         absolute_difference = np.abs(labels1 - labels2)
         combined_mean_difference = np.mean(absolute_difference)
         combined_standard_deviation_difference = np.std(absolute_difference)

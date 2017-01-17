@@ -195,7 +195,8 @@ class ResectionData(Data):
 
         :param data_prefix_pattern: The pattern the file names must start with to be considered.
         :type data_prefix_pattern: str
-        :param data_postfix_pattern: The pattern the file names must end with to be considered.
+        :param data_postfix_pattern: The file postfix pattern such that files with matching names other than this
+                                     prefix should be grouped together.
         :type data_postfix_pattern: str
         :param validation_size_percentage: The percentage of the files to be used for the validation set.
         :type validation_size_percentage: float
