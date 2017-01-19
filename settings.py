@@ -25,4 +25,5 @@ class Settings(GoSettings):
         self.label_height = 2
         self.label_width = 1
 
-        self.datasets_json = 'datasets.json'
+        self.data_directory = '/Volumes/ResectionNetHub/storage/data'
+        self.datasets_json = '/Volumes/ResectionNetHub/storage/extra/nyudepth_datasets.json'

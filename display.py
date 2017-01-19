@@ -3,6 +3,7 @@ Code for displaying results of programs and scripts.
 """
 import math
 import numpy as np
+import os
 
 from gonet.tfrecords_processor import TFRecordsProcessor
 from resection_data import ResectionData
@@ -13,7 +14,7 @@ class Display:
     A class for displaying results of programs and scripts.
     """
     @staticmethod
-    def print_size_of_datasets(data_type):
+    def print_size_of_dataset(data_type):
         """
         Gives the number of images in a dataset.
 
@@ -21,10 +22,12 @@ class Display:
         :type data_type: str
         """
         go_tfrecords_processor = TFRecordsProcessor()
-        file_paths = ResectionData().file_names_from_json(data_type)
+        data = ResectionData()
+        file_names = data.file_names_from_json(data_type)
         total_size = 0
-        for file_path in file_paths:
-            _, labels = go_tfrecords_processor.read_to_numpy(file_path)
+        for file_name in file_names:
+            print('Processing {}...'.format(file_name))
+            _, labels = go_tfrecords_processor.read_to_numpy(os.path.join(data.settings.data_directory, file_name))
             total_size += labels.shape[0]
         print('The {} dataset has {} examples.'.format(data_type, total_size))
 
