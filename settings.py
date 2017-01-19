@@ -25,4 +25,4 @@ class Settings(GoSettings):
         self.label_height = 2
         self.label_width = 1
 
-        self.datasets_json = 'nyudepth_datasets.json'
+        self.datasets_json = 'datasets.json'
