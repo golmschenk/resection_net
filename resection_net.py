@@ -55,7 +55,7 @@ class ResectionNet(Net):
         tf.scalar_summary("Roll average squared difference", tf.reduce_mean(squared_roll_difference))
         return squared_difference
 
-    def create_linear_classifier_inference_op(self, images):
+    def create_linear_inference_op(self, images):
         """
         Performs a forward pass estimating label maps from RGB images using only a linear classifier.
 
@@ -226,6 +226,7 @@ class ResectionNet(Net):
         """
         self.test_labels = np.ndarray(shape=[0, 2], dtype=np.float32)
         self.predicted_test_labels = np.ndarray(shape=[0, 2], dtype=np.float32)
+        self.test_step = 0
 
     def test_run_loop_step(self):
         """
@@ -233,13 +234,14 @@ class ResectionNet(Net):
         """
         predicted_labels_tensor = self.session.graph.get_tensor_by_name('inference_op:0')
         labels_tensor = self.session.graph.get_tensor_by_name('labels_input_op:0')
-        step, predicted_labels_batch, labels_batch = self.session.run(
-            [self.global_step, predicted_labels_tensor, labels_tensor],
+        predicted_labels_batch, labels_batch = self.session.run(
+            [predicted_labels_tensor, labels_tensor],
             feed_dict={**self.default_feed_dictionary, self.dropout_keep_probability_tensor: 1.0}
         )
         self.test_labels = np.concatenate((self.test_labels, labels_batch))
         self.predicted_test_labels = np.concatenate((self.predicted_test_labels, predicted_labels_batch))
-        print('{image_count} images processed.'.format(image_count=(step + 1) * self.settings.batch_size))
+        print('{image_count} images processed.'.format(image_count=(self.test_step + 1) * self.settings.batch_size))
+        self.test_step += 1
 
     def test_run_postloop(self):
         """
