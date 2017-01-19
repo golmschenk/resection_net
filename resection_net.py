@@ -55,18 +55,6 @@ class ResectionNet(Net):
         tf.scalar_summary("Roll average squared difference", tf.reduce_mean(squared_roll_difference))
         return squared_difference
 
-    def create_inference_op(self, images):
-        """
-        Performs a forward pass estimating label maps from RGB images.
-
-        :param images: The RGB images tensor.
-        :type images: tf.Tensor
-        :return: The label maps tensor.
-        :rtype: tf.Tensor
-        """
-        inference_op = self.create_striding_hermes_inference_op(images)
-        return tf.identity(inference_op, name='inference_op')
-
     def create_linear_classifier_inference_op(self, images):
         """
         Performs a forward pass estimating label maps from RGB images using only a linear classifier.
