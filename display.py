@@ -125,12 +125,10 @@ class Display:
         axis_labels_standard_deviation = np.std(test_labels, axis=0)
         axis_mean_absolute_deviation = np.mean(absolute_deviation, axis=0)
 
-        axis_l2_error = np.linalg.norm(absolute_difference, ord=2, axis=0)
-
         print('Degrees')
-        print('Combined L2 Error: {}'.format(np.mean(axis_l2_error)))
-        print('Pitch L2 Error: {}'.format(axis_l2_error[0]))
-        print('Roll L2 Error: {}'.format(axis_l2_error[1]))
+        print('Combined RMSE: {}'.format(np.sqrt(combined_mean_squared_difference)))
+        print('Pitch RMSE: {}'.format(np.sqrt(axis_mean_squared_difference[0])))
+        print('Roll RMSE: {}'.format(np.sqrt(axis_mean_squared_difference[1])))
         print('Ground truth pitch mean: {}'.format(axis_mean_labels[0]))
         print('Ground truth roll mean: {}'.format(axis_mean_labels[1]))
         print('Ground truth combined standard deviation: {}'.format(np.std(test_labels)))

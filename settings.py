@@ -26,3 +26,4 @@ class Settings(GoSettings):
         self.label_width = 1
 
         self.datasets_json = 'datasets.json'
+        self.inference_op_name = 'striding_gaea'
