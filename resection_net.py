@@ -149,7 +149,7 @@ class ResectionNet(Net):
         module4_output = self.terra_module('module4', module3_output, 128, strided_max_pool_on=True)
         module5_output = self.terra_module('module5', module4_output, 256, strided_max_pool_on=True, dropout_on=True)
         module6_output = self.terra_module('module6', module5_output, 256, strided_max_pool_on=True, dropout_on=True)
-        fc1_output = fully_connected(flatten(module6_output), 500, activation_fn=leaky_relu)
+        fc1_output = fully_connected(flatten(module6_output), 1500, activation_fn=leaky_relu)
         predicted_labels = fully_connected(flatten(fc1_output), 2, activation_fn=None)
         return predicted_labels
 
@@ -241,7 +241,6 @@ class ResectionNet(Net):
         self.test_labels = np.concatenate((self.test_labels, labels_batch))
         self.predicted_test_labels = np.concatenate((self.predicted_test_labels, predicted_labels_batch))
         print('{image_count} images processed.'.format(image_count=(self.test_step + 1) * self.settings.batch_size))
-        self.test_step += 1
 
     def test_run_postloop(self):
         """

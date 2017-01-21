@@ -131,7 +131,7 @@ class Display:
         print('Roll RMSE: {}'.format(np.sqrt(axis_mean_squared_difference[1])))
         print('Ground truth pitch mean: {}'.format(axis_mean_labels[0]))
         print('Ground truth roll mean: {}'.format(axis_mean_labels[1]))
-        print('Ground truth combined standard deviation: {}'.format(np.std(test_labels)))
+        print('Ground truth combined standard deviation: {}'.format(np.mean(np.std(test_labels, axis=0))))
         print('Combined mean squared difference: {}'.format(combined_mean_squared_difference))
         print('Ground truth pitch standard deviation: {}'.format(axis_labels_standard_deviation[0]))
         print('Pitch mean squared difference: {}'.format(axis_mean_squared_difference[0]))
