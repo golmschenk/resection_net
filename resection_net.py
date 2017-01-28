@@ -116,6 +116,28 @@ class ResectionNet(Net):
         predicted_labels = fully_connected(flatten(module6_output), 2, activation_fn=None)
         return predicted_labels
 
+    def create_striding_hermes4_inference_op(self, images):
+        """
+        Performs a forward pass estimating label maps from RGB images using the mercury modules.
+
+        :param images: The RGB images tensor.
+        :type images: tf.Tensor
+        :return: The label maps tensor.
+        :rtype: tf.Tensor
+        """
+        module1_output = self.mercury_module('module1', images, 3, 6, 3, strided_max_pool_on=True)
+        module2_output = self.mercury_module('module2', module1_output, 8, 12, 8, strided_max_pool_on=True)
+        module3_output = self.mercury_module('module3', module2_output, 16, 24, 16, strided_max_pool_on=True)
+        module4_output = self.mercury_module('module4', module3_output, 25, 50, 25, strided_max_pool_on=True)
+        module5_output = self.mercury_module('module5', module4_output, 50, 100, 50, strided_max_pool_on=True,
+                                             dropout_on=True)
+        module6_output = self.mercury_module('module6', module5_output, 75, 150, 75, strided_max_pool_on=True,
+                                             dropout_on=True)
+        fc1_output = fully_connected(flatten(module6_output), 100, activation_fn=leaky_relu)
+        fc2_output = fully_connected(flatten(fc1_output), 20, activation_fn=leaky_relu)
+        predicted_labels = fully_connected(flatten(fc2_output), 2, activation_fn=None)
+        return predicted_labels
+
     def create_striding_gaea_inference_op(self, images):
         """
         Performs a forward pass estimating label maps from RGB images using the terra modules
