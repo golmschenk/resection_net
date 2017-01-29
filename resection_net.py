@@ -134,8 +134,8 @@ class ResectionNet(Net):
         module6_output = self.mercury_module('module6', module5_output, 75, 150, 75, strided_max_pool_on=True,
                                              dropout_on=True)
         fc1_output = fully_connected(flatten(module6_output), 100, activation_fn=leaky_relu)
-        fc2_output = fully_connected(flatten(fc1_output), 20, activation_fn=leaky_relu)
-        predicted_labels = fully_connected(flatten(fc2_output), 2, activation_fn=None)
+        fc2_output = fully_connected(fc1_output, 20, activation_fn=leaky_relu)
+        predicted_labels = fully_connected(fc2_output, 2, activation_fn=None)
         return predicted_labels
 
     def create_striding_gaea_inference_op(self, images):
@@ -172,7 +172,7 @@ class ResectionNet(Net):
         module5_output = self.terra_module('module5', module4_output, 256, strided_max_pool_on=True, dropout_on=True)
         module6_output = self.terra_module('module6', module5_output, 256, strided_max_pool_on=True, dropout_on=True)
         fc1_output = fully_connected(flatten(module6_output), 500, activation_fn=leaky_relu)
-        predicted_labels = fully_connected(flatten(fc1_output), 2, activation_fn=None)
+        predicted_labels = fully_connected(fc1_output, 2, activation_fn=None)
         return predicted_labels
 
     def create_striding_gaea3_inference_op(self, images):
@@ -191,7 +191,7 @@ class ResectionNet(Net):
         module5_output = self.terra_module('module5', module4_output, 256, strided_max_pool_on=True, dropout_on=True)
         module6_output = self.terra_module('module6', module5_output, 256, strided_max_pool_on=True, dropout_on=True)
         fc1_output = fully_connected(flatten(module6_output), 1500, activation_fn=leaky_relu)
-        predicted_labels = fully_connected(flatten(fc1_output), 2, activation_fn=None)
+        predicted_labels = fully_connected(fc1_output, 2, activation_fn=None)
         return predicted_labels
 
     def create_striding_gaea4_inference_op(self, images):
@@ -210,8 +210,8 @@ class ResectionNet(Net):
         module5_output = self.terra_module('module5', module4_output, 256, strided_max_pool_on=True, dropout_on=True)
         module6_output = self.terra_module('module6', module5_output, 256, strided_max_pool_on=True, dropout_on=True)
         fc1_output = fully_connected(flatten(module6_output), 100, activation_fn=leaky_relu)
-        fc2_output = fully_connected(flatten(fc1_output), 20, activation_fn=leaky_relu)
-        predicted_labels = fully_connected(flatten(fc2_output), 2, activation_fn=None)
+        fc2_output = fully_connected(fc1_output, 20, activation_fn=leaky_relu)
+        predicted_labels = fully_connected(fc2_output, 2, activation_fn=None)
         return predicted_labels
 
     def create_deep_inference_op(self, images):
