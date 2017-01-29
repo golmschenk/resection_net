@@ -24,6 +24,8 @@ class Settings(GoSettings):
         # The below settings are ResectionNet specific and should not be changed.
         self.label_height = 2
         self.label_width = 1
+        self.summary_step_period = 1
+        self.validation_step_period = 1
 
         self.datasets_json = 'datasets.json'
         self.inference_op_name = 'striding_gaea'

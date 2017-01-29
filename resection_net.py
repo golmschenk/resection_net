@@ -55,6 +55,7 @@ class ResectionNet(Net):
         tf.scalar_summary("Roll average squared difference", tf.reduce_mean(squared_roll_difference))
         return squared_difference
 
+    # noinspection PyMethodMayBeStatic
     def create_linear_inference_op(self, images):
         """
         Performs a forward pass estimating label maps from RGB images using only a linear classifier.
@@ -64,15 +65,10 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.settings.image_height * self.settings.image_width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.settings.image_depth])
-        weights = weight_variable([pixel_count * self.settings.image_depth, 2], stddev=0.001)
-        biases = bias_variable([2], constant=0.001)
-
-        flat_predicted_labels = tf.matmul(flat_images, weights) + biases
-        predicted_labels = tf.reshape(flat_predicted_labels, [-1, 2])
+        predicted_labels = fully_connected(flatten(images), 2, activation_fn=None)
         return predicted_labels
 
+    # noinspection PyMethodMayBeStatic
     def create_two_layer_inference_op(self, images):
         """
         Performs a forward pass estimating label maps from RGB images using 2 fully connected layers.
@@ -82,18 +78,8 @@ class ResectionNet(Net):
         :return: The label maps tensor.
         :rtype: tf.Tensor
         """
-        pixel_count = self.settings.image_height * self.settings.image_width
-        flat_images = tf.reshape(images, [-1, pixel_count * self.settings.image_depth])
-        weights = weight_variable([pixel_count * self.settings.image_depth, 64], stddev=0.001)
-        biases = bias_variable([64], constant=0.001)
-
-        flat_hypothesis = tf.matmul(flat_images, weights) + biases
-
-        weights = weight_variable([64, 2], stddev=0.001)
-        biases = bias_variable([2], constant=0.001)
-        flat_predicted_labels = tf.matmul(flat_hypothesis, weights) + biases
-
-        predicted_labels = tf.reshape(flat_predicted_labels, [-1, 2])
+        fc1_output = fully_connected(flatten(images), 64, activation_fn=leaky_relu)
+        predicted_labels = fully_connected(fc1_output, 2, activation_fn=None)
         return predicted_labels
 
     def create_striding_hermes_inference_op(self, images):
